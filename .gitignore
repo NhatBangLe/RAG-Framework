@@ -1,0 +1,4 @@
+resource
+poetry.lock
+.env
+.idea
