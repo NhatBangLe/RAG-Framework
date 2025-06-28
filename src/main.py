@@ -14,6 +14,10 @@ from pymongo.server_api import ServerApi
 from src.data.database import DB_URI
 from src.dependency import DownloadGeneratorDep
 from src.route.chat_model import router as chat_model_router
+from src.route.prompt import router as prompt_router
+from src.route.embeddings import router as embeddings_router
+from src.route.retriever import router as retriever_router
+from src.route.recognizer import router as recognizer_router
 from src.util.error import NotFoundError, InvalidArgumentError
 
 
@@ -68,6 +72,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(chat_model_router)
+app.include_router(prompt_router)
+app.include_router(retriever_router)
+app.include_router(embeddings_router)
+app.include_router(recognizer_router)
 
 
 # Global routes

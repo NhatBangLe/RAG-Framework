@@ -7,6 +7,10 @@ DB_NAME = "MONGODB_DATABASE"
 
 class MongoCollection(Enum):
     CHAT_MODEL = "chat_model"
+    PROMPT = "prompt"
+    RECOGNIZER = "recognizer"
+    RETRIEVER = "retriever"
+    EMBEDDINGS = "embeddings"
 
 
 def get_database():
