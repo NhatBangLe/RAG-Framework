@@ -1,12 +1,108 @@
+import asyncio
+import logging
+import os
+import platform
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from dotenv import load_dotenv
+from fastapi import FastAPI, Request, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, FileResponse
+from pymongo import AsyncMongoClient
+from pymongo.server_api import ServerApi
+
+from src.data.database import DB_URI
+from src.dependency import DownloadGeneratorDep
+from src.route.chat_model import router as chat_model_router
+from src.util.error import NotFoundError, InvalidArgumentError
+
+
+## Set up logging.
+def setup_logging():
+    level = os.getenv("LOG_LEVEL", "INFO")
+    matches = {
+        "INFO": logging.INFO,
+        "DEBUG": logging.DEBUG,
+        "WARNING": logging.WARNING,
+    }
+
+    pattern = (
+        "%(asctime)s - %(levelname)s - %(name)s - "
+        "%(filename)s:%(lineno)d - %(message)s"
+    )
+    logging.basicConfig(level=matches[level], format=pattern)
+
+
+def setup_event_loop():
+    if 'Windows' in platform.system():
+        asyncio.set_event_loop_policy(
+            asyncio.WindowsSelectorEventLoopPolicy()
+        )
+
+
+# Initialize
+load_dotenv()
+setup_event_loop()
+setup_logging()
+
+# Create a new client and connect to the server
+mongodb_client = AsyncMongoClient(os.getenv(DB_URI), server_api=ServerApi('1'))
 
 
 # noinspection PyUnusedLocal
 @asynccontextmanager
 async def lifespan(app_inst: FastAPI):
+    await mongodb_client.aconnect()
+
     yield
+
+    await mongodb_client.close()
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.include_router(chat_model_router)
+
+
+# Global routes
+@app.get("/download", tags=["Download File"], status_code=status.HTTP_200_OK)
+async def download(token: str, generator: DownloadGeneratorDep):
+    file = generator.verify_token(token)
+    return FileResponse(
+        path=file["path"],
+        media_type=file["mime_type"],
+        filename=file["name"]
+    )
+
+
+@app.get("/health", tags=["Health Check"], status_code=status.HTTP_200_OK)
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "OK"
+    }
+
+
+# Exception handlers
+# noinspection PyUnusedLocal
+@app.exception_handler(NotFoundError)
+async def not_found_exception_handler(request: Request, exc: NotFoundError):
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"message": exc.reason},
+    )
+
+
+# noinspection PyUnusedLocal
+@app.exception_handler(InvalidArgumentError)
+async def invalid_argument_exception_handler(request: Request, exc: InvalidArgumentError):
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"message": exc.reason},
+    )

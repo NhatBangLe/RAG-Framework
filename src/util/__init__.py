@@ -2,22 +2,18 @@ import base64
 import hashlib
 import hmac
 import math
-import re
 import secrets
 import time
-
 from os import PathLike
-from pathlib import Path
-from typing import TypedDict, Callable, Self
+from typing import TypedDict, Self, Callable
 
 from pydantic import BaseModel, Field
-from sqlalchemy import Select
-from sqlmodel import Session
+from pymongo.asynchronous.collection import AsyncCollection
 
-from src.util.constant import DEFAULT_CHARSET, DEFAULT_TOKEN_SEPARATOR, EMOTICONS
+from src.util.constant import DEFAULT_CHARSET, DEFAULT_TOKEN_SEPARATOR
 
 __all__ = ['error', 'FileInformation', "SecureDownloadGenerator", "Progress", "constant", "function", "PagingParams",
-           "PagingWrapper", "TextPreprocessing"]
+           "PagingWrapper"]
 
 
 class FileInformation(TypedDict):
@@ -109,47 +105,6 @@ class Progress(TypedDict):
     percentage: float
 
 
-class TextPreprocessing:
-    _removal_words: list[str]
-
-    def __init__(self, removal_words_path: str | PathLike[str]):
-        super().__init__()
-        all_words = Path(removal_words_path).read_text(encoding=DEFAULT_CHARSET)
-        self._removal_words = all_words.split('\n')
-
-    @staticmethod
-    def remove_emoji(text: str) -> str:
-        emoji_pattern = re.compile("["
-                                   u"\U0001F600-\U0001F64F"  # emoticons
-                                   u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-                                   u"\U0001F680-\U0001F6FF"  # transport & map symbols
-                                   u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-                                   u"\U00002500-\U00002BEF"  # chinese char
-                                   u"\U00002702-\U000027B0"
-                                   u"\U00002702-\U000027B0"
-                                   u"\U000024C2-\U0001F251"
-                                   u"\U0001f926-\U0001f937"
-                                   u"\U00010000-\U0010ffff"
-                                   u"\u2640-\u2642"
-                                   u"\u2600-\u2B55"
-                                   u"\u200d"
-                                   u"\u23cf"
-                                   u"\u23e9"
-                                   u"\u231a"
-                                   u"\ufe0f"  # dingbats
-                                   u"\u3030"
-                                   "]+", flags=re.UNICODE)
-        return emoji_pattern.sub(r'', text)
-
-    @staticmethod
-    def remove_emoticons(text):
-        emoticon_pattern = re.compile(u'(' + u'|'.join(k for k in EMOTICONS) + u')')
-        return emoticon_pattern.sub(r'', text)
-
-    def remove_words(self, text: str) -> str:
-        return " ".join([word for word in str(text).split() if word not in self._removal_words])
-
-
 class PagingParams(BaseModel):
     offset: int = Field(description="The page number.", default=0, ge=0)
     limit: int = Field(description="The page size.", default=10, gt=0, le=100)
@@ -173,19 +128,25 @@ class PagingWrapper[T](BaseModel):
                                     description="The total number of pages in database if use `page_size`.")
 
     @classmethod
-    def get_paging(
+    async def get_paging(
             cls,
             params: PagingParams,
-            count_statement: Select,
-            execute_statement: Select,
-            session: Session
+            collection: AsyncCollection,
+            *args
     ):
-        total_elements = int(session.exec(count_statement).one())
+        total_elements = await collection.count_documents({})
         total_pages = math.ceil(total_elements / params.limit)
+        results = collection.find(*args).limit(params.limit).skip(params.limit * params.offset)
+        content = []
+        async for r in results:
+            record = dict(r)
+            if "_id" in record:
+                record["id"] = str(record["_id"])
+                del record["_id"]
+            content.append(record)
 
-        results = session.exec(execute_statement)
         return cls(
-            content=list(results.all()),
+            content=content,
             first=params.offset == 0,
             last=params.offset == max(total_pages - 1, 0),
             total_elements=total_elements,
