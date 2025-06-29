@@ -2,6 +2,9 @@ from typing import Annotated
 
 from pydantic import BeforeValidator, BaseModel, Field
 
+from src.config.model.chat_model.google_genai import HarmCategory, HarmBlockThreshold
+from src.config.model.embeddings.google_genai import GoogleGenAIEmbeddingsTaskType
+
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
 
@@ -13,7 +16,13 @@ class BaseGoogleGenAIChatModel(BaseModel):
     timeout: float | None = Field(default=None, ge=0.0)
     top_k: int | None = Field(default=None, ge=0)
     top_p: float | None = Field(default=None, ge=0.0, le=1.0)
-    safety_settings: dict[str, str] | None = Field(default=None)
+    safety_settings: dict[HarmCategory, HarmBlockThreshold] | None = Field(default=None)
+
+
+class BaseGoogleGenAIEmbeddings(BaseModel):
+    name: str
+    model_name: str = Field(min_length=1)
+    task_type: GoogleGenAIEmbeddingsTaskType | None = Field(default=None)
 
 
 class BaseOllamaChatModel(BaseModel):
@@ -27,3 +36,8 @@ class BaseOllamaChatModel(BaseModel):
     top_k: int | None = Field(default=40, ge=0)
     top_p: float | None = Field(default=0.9, ge=0.0, le=1.0)
     stop: list[str] | None = Field(default=None)
+
+
+class BaseHuggingFaceEmbeddings(BaseModel):
+    name: str
+    model_name: str = Field(min_length=1)

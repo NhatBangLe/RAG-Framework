@@ -5,7 +5,7 @@ DB_URI = "MONGODB_URI"
 DB_NAME = "MONGODB_DATABASE"
 
 
-class MongoCollection(Enum):
+class MongoCollection(str, Enum):
     CHAT_MODEL = "chat_model"
     PROMPT = "prompt"
     RECOGNIZER = "recognizer"
