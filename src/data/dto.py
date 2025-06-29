@@ -1,14 +1,17 @@
-from typing import Literal
-
 from pydantic import ConfigDict, Field
 
+from .base_model import BaseGoogleGenAIChatModel, BaseOllamaChatModel
 from ..config.model.chat_model.google_genai import GoogleGenAILLMConfiguration
 from ..config.model.chat_model.ollama import OllamaLLMConfiguration
 from ..data.base_model import PyObjectId
 
 
-class GoogleGenAIChatModelCreate(GoogleGenAILLMConfiguration):
-    provider: Literal["google_genai"] = Field(default="google_genai")
+class GoogleGenAIChatModelCreate(BaseGoogleGenAIChatModel):
+    pass
+
+
+class GoogleGenAIChatModelUpdate(BaseGoogleGenAIChatModel):
+    pass
 
 
 class GoogleGenAIChatModelPublic(GoogleGenAILLMConfiguration):
@@ -16,8 +19,12 @@ class GoogleGenAIChatModelPublic(GoogleGenAILLMConfiguration):
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
 
-class OllamaChatModelCreate(OllamaLLMConfiguration):
-    provider: Literal["google_genai"] = Field(default="ollama")
+class OllamaChatModelCreate(BaseOllamaChatModel):
+    pass
+
+
+class OllamaChatModelUpdate(BaseOllamaChatModel):
+    pass
 
 
 class OllamaChatModelPublic(OllamaLLMConfiguration):

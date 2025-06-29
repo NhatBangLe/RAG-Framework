@@ -8,7 +8,7 @@ from starlette import status
 from ..config.model.chat_model import LLMConfiguration
 from ..data.database import get_collection, MongoCollection
 from ..data.dto import GoogleGenAIChatModelPublic, GoogleGenAIChatModelCreate, OllamaChatModelCreate, \
-    OllamaChatModelPublic
+    OllamaChatModelPublic, GoogleGenAIChatModelUpdate, OllamaChatModelUpdate
 from ..data.model import GoogleGenAIChatModel, OllamaChatModel
 from ..dependency import PagingQuery
 from ..util import PagingWrapper
@@ -29,9 +29,26 @@ GoogleGenAIChatModelCreateBody = Annotated[GoogleGenAIChatModelCreate, Body(
         "temperature": 0.5,
         "max_tokens": 1024,
         "max_retries": 6,
-        "timeout": None,
-        "top_k": None,
-        "top_p": None,
+        "timeout": 1.5,
+        "top_k": 2,
+        "top_p": 0.5,
+        "safety_settings": {
+            "DANGEROUS_CONTENT": "BLOCK_MEDIUM_AND_ABOVE",
+            "HATE_SPEECH": "BLOCK_ONLY_HIGH",
+            "HARASSMENT": "BLOCK_LOW_AND_ABOVE",
+            "SEXUALLY_EXPLICIT": "BLOCK_NONE"
+        }
+    }
+)]
+GoogleGenAIChatModelUpdateBody = Annotated[GoogleGenAIChatModelUpdate, Body(
+    example={
+        "model_name": "gemini-2.0-flash",
+        "temperature": 0.5,
+        "max_tokens": 1024,
+        "max_retries": 6,
+        "timeout": 1.5,
+        "top_k": 2,
+        "top_p": 0.5,
         "safety_settings": {
             "DANGEROUS_CONTENT": "BLOCK_MEDIUM_AND_ABOVE",
             "HATE_SPEECH": "BLOCK_ONLY_HIGH",
@@ -41,6 +58,20 @@ GoogleGenAIChatModelCreateBody = Annotated[GoogleGenAIChatModelCreate, Body(
     }
 )]
 OllamaChatModelCreateBody = Annotated[OllamaChatModelCreate, Body(
+    example={
+        "model_name": "deepseek-r1",
+        "base_url": "http://localhost:11434",
+        "temperature": 0.8,
+        "seed": None,
+        "num_ctx": 2048,
+        "num_predict": 128,
+        "repeat_penalty": 1.1,
+        "top_k": 40,
+        "top_p": 0.9,
+        "stop": ["</s>", "<|eot_id|>"]
+    }
+)]
+OllamaChatModelUpdateBody = Annotated[OllamaChatModelUpdate, Body(
     example={
         "model_name": "deepseek-r1",
         "base_url": "http://localhost:11434",
@@ -70,6 +101,15 @@ async def create_model(model: LLMConfiguration):
     return str(result.inserted_id)
 
 
+async def update_model(model_id: str, model: LLMConfiguration):
+    collection = get_collection(MongoCollection.CHAT_MODEL)
+    query_filter = {'_id': ObjectId(model_id)}
+    update_operation = {'$set': model.model_dump()}
+    result = await collection.update_one(query_filter, update_operation)
+    if result.modified_count == 0:
+        raise NotFoundError(f'Cannot update chat model with id {model_id}. Because no chat model found.')
+
+
 # Google GenAI
 @router.get(
     path="/google-genai/{model_id}",
@@ -89,6 +129,15 @@ async def create_genai_model(data: GoogleGenAIChatModelCreateBody):
     return await create_model(model)
 
 
+@router.put(
+    path="/google-genai/{model_id}",
+    description="Update a Google GenAI chat model.",
+    status_code=status.HTTP_204_NO_CONTENT)
+async def update_genai_model(model_id: str, data: GoogleGenAIChatModelUpdateBody):
+    model = GoogleGenAIChatModel.model_validate(data.model_dump())
+    await update_model(model_id, model)
+
+
 # Ollama
 @router.get(
     path="/ollama/{model_id}",
@@ -106,6 +155,15 @@ async def get_ollama_model(model_id: str):
 async def create_ollama_model(data: OllamaChatModelCreateBody):
     model = OllamaChatModel.model_validate(data.model_dump())
     return await create_model(model)
+
+
+@router.put(
+    path="/ollama/{model_id}",
+    description="Update an Ollama chat model.",
+    status_code=status.HTTP_204_NO_CONTENT)
+async def update_ollama_model(model_id: str, data: OllamaChatModelUpdateBody):
+    model = OllamaChatModel.model_validate(data.model_dump())
+    await update_model(model_id, model)
 
 
 # Global
