@@ -1,11 +1,12 @@
 from pydantic import ConfigDict, Field
 
 from .base_model import BaseGoogleGenAIChatModel, BaseOllamaChatModel, BaseGoogleGenAIEmbeddings, \
-    BaseHuggingFaceEmbeddings
+    BaseHuggingFaceEmbeddings, BasePrompt
 from ..config.model.chat_model.google_genai import GoogleGenAILLMConfiguration
 from ..config.model.chat_model.ollama import OllamaLLMConfiguration
 from ..config.model.embeddings.google_genai import GoogleGenAIEmbeddingsConfiguration
 from ..config.model.embeddings.hugging_face import HuggingFaceEmbeddingsConfiguration
+from ..config.model.prompt import PromptConfiguration
 from ..data.base_model import PyObjectId
 
 
@@ -57,5 +58,18 @@ class HuggingFaceEmbeddingsUpdate(BaseHuggingFaceEmbeddings):
 
 
 class HuggingFaceEmbeddingsPublic(HuggingFaceEmbeddingsConfiguration):
+    id: PyObjectId = Field(validation_alias="_id")
+    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
+
+
+class PromptCreate(BasePrompt):
+    pass
+
+
+class PromptUpdate(BasePrompt):
+    pass
+
+
+class PromptPublic(PromptConfiguration):
     id: PyObjectId = Field(validation_alias="_id")
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)

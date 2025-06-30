@@ -41,3 +41,8 @@ class BaseOllamaChatModel(BaseModel):
 class BaseHuggingFaceEmbeddings(BaseModel):
     name: str
     model_name: str = Field(min_length=1)
+
+
+class BasePrompt(BaseModel):
+    suggest_questions_prompt: str = Field(min_length=8)
+    respond_prompt: str = Field(min_length=11)
