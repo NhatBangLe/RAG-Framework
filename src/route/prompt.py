@@ -70,7 +70,7 @@ async def update(prompt_id: str, data: PromptUpdateBody):
     path="/all",
     description="Get prompt entities. Check prompt entities data response at corresponding endpoints.",
     status_code=status.HTTP_200_OK)
-async def get_all_models(params: PagingQuery):
+async def get_all_prompts(params: PagingQuery):
     collection = get_collection(MongoCollection.PROMPT)
     return await PagingWrapper.get_paging(params, collection)
 
