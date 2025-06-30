@@ -62,7 +62,7 @@ async def create_model(data: EmbeddingsConfiguration):
 
 
 async def update_model(model_id: str, model: EmbeddingsConfiguration):
-    collection = get_collection(MongoCollection.CHAT_MODEL)
+    collection = get_collection(MongoCollection.EMBEDDINGS)
     query_filter = {'_id': ObjectId(model_id)}
     update_operation = {'$set': model.model_dump()}
     result = await collection.update_one(query_filter, update_operation)
