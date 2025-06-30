@@ -2,9 +2,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, status, Body
 
-from src.data.database import MongoCollection, get_by_id, create_document, update_by_id, delete_by_id
+from src.data.database import MongoCollection, get_by_id, create_document, update_by_id, delete_by_id, get_collection
 from src.data.dto import PromptPublic, PromptCreate, PromptUpdate
 from src.data.model import Prompt
+from src.dependency import PagingQuery
+from src.util import PagingWrapper
 
 router = APIRouter(
     prefix="/api/v1/prompt",
@@ -62,6 +64,15 @@ async def create(data: PromptCreateBody):
 async def update(prompt_id: str, data: PromptUpdateBody):
     model = Prompt.model_validate(data.model_dump())
     await update_by_id(prompt_id, model, MongoCollection.PROMPT)
+
+
+@router.get(
+    path="/all",
+    description="Get prompt entities. Check prompt entities data response at corresponding endpoints.",
+    status_code=status.HTTP_200_OK)
+async def get_all_models(params: PagingQuery):
+    collection = get_collection(MongoCollection.PROMPT)
+    return await PagingWrapper.get_paging(params, collection)
 
 
 @router.delete(

@@ -4,11 +4,12 @@ from bson import ObjectId
 from fastapi import APIRouter, status, Body
 
 from ..config.model.embeddings import EmbeddingsConfiguration
-from ..data.database import get_collection, MongoCollection
+from ..data.database import get_collection, MongoCollection, get_by_id, create_document, update_by_id
 from ..data.dto import GoogleGenAIEmbeddingsPublic, GoogleGenAIEmbeddingsCreate, GoogleGenAIEmbeddingsUpdate, \
     HuggingFaceEmbeddingsCreate, HuggingFaceEmbeddingsUpdate, HuggingFaceEmbeddingsPublic
 from ..data.model import GoogleGenAIEmbeddings, HuggingFaceEmbeddings
-from ..util.error import NotFoundError
+from ..dependency import PagingQuery
+from ..util import PagingWrapper
 
 router = APIRouter(
     prefix="/api/v1/embeddings",
@@ -48,26 +49,13 @@ HuggingFaceEmbeddingsUpdateBody = Annotated[HuggingFaceEmbeddingsUpdate, Body(
 
 
 async def get_model(model_id: str):
-    collection = get_collection(MongoCollection.EMBEDDINGS)
-    model = await collection.find_one({"_id": ObjectId(model_id)})
-    if model is None:
-        raise NotFoundError(f'No embeddings model with id {model_id} found.')
-    return model
-
-
-async def create_model(data: EmbeddingsConfiguration):
-    collection = get_collection(MongoCollection.EMBEDDINGS)
-    created_model = await collection.insert_one(data.model_dump())
-    return str(created_model.inserted_id)
+    not_found_msg = f'No embeddings model with id {model_id} found.'
+    return await get_by_id(model_id, MongoCollection.EMBEDDINGS, not_found_msg)
 
 
 async def update_model(model_id: str, model: EmbeddingsConfiguration):
-    collection = get_collection(MongoCollection.EMBEDDINGS)
-    query_filter = {'_id': ObjectId(model_id)}
-    update_operation = {'$set': model.model_dump()}
-    result = await collection.update_one(query_filter, update_operation)
-    if result.modified_count == 0:
-        raise NotFoundError(f'Cannot update embeddings model with id {model_id}. Because no embeddings model found.')
+    not_found_msg = f'Cannot update embeddings model with id {model_id}. Because no embeddings model found.'
+    await update_by_id(model_id, model, MongoCollection.EMBEDDINGS, not_found_msg)
 
 
 @router.get(
@@ -85,7 +73,7 @@ async def get_genai_model(model_id: str):
     status_code=status.HTTP_201_CREATED)
 async def create_genai_model(data: GoogleGenAIEmbeddingsCreateBody):
     model = GoogleGenAIEmbeddings.model_validate(data.model_dump())
-    return await create_model(model)
+    return await create_document(model, MongoCollection.EMBEDDINGS)
 
 
 @router.put(
@@ -112,7 +100,7 @@ async def get_huggingface_model(model_id: str):
     status_code=status.HTTP_201_CREATED)
 async def create_huggingface_model(data: HuggingFaceEmbeddingsCreateBody):
     model = HuggingFaceEmbeddings.model_validate(data.model_dump())
-    return await create_model(model)
+    return await create_document(model, MongoCollection.EMBEDDINGS)
 
 
 @router.put(
@@ -122,6 +110,16 @@ async def create_huggingface_model(data: HuggingFaceEmbeddingsCreateBody):
 async def update_huggingface_model(model_id: str, data: HuggingFaceEmbeddingsUpdateBody):
     model = HuggingFaceEmbeddings.model_validate(data.model_dump())
     await update_model(model_id, model)
+
+
+# Global
+@router.get(
+    path="/all",
+    description="Get embeddings models. Check embeddings model data response at corresponding endpoints.",
+    status_code=status.HTTP_200_OK)
+async def get_all_models(params: PagingQuery):
+    collection = get_collection(MongoCollection.EMBEDDINGS)
+    return await PagingWrapper.get_paging(params, collection)
 
 
 @router.delete(

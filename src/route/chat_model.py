@@ -1,18 +1,16 @@
 from typing import Annotated
 
-from bson import ObjectId
 from fastapi import APIRouter
 from fastapi.params import Body
 from starlette import status
 
 from ..config.model.chat_model import LLMConfiguration
-from ..data.database import get_collection, MongoCollection
+from ..data.database import get_collection, MongoCollection, get_by_id, create_document, update_by_id, delete_by_id
 from ..data.dto import GoogleGenAIChatModelPublic, GoogleGenAIChatModelCreate, OllamaChatModelCreate, \
     OllamaChatModelPublic, GoogleGenAIChatModelUpdate, OllamaChatModelUpdate
 from ..data.model import GoogleGenAIChatModel, OllamaChatModel
 from ..dependency import PagingQuery
 from ..util import PagingWrapper
-from ..util.error import NotFoundError
 
 router = APIRouter(
     prefix="/api/v1/chat-model",
@@ -88,26 +86,13 @@ OllamaChatModelUpdateBody = Annotated[OllamaChatModelUpdate, Body(
 
 
 async def get_model(model_id: str):
-    collection = get_collection(MongoCollection.CHAT_MODEL)
-    model = await collection.find_one({"_id": ObjectId(model_id)})
-    if model is None:
-        raise NotFoundError(f'No chat model with id {model_id} found.')
-    return model
-
-
-async def create_model(model: LLMConfiguration):
-    collection = get_collection(MongoCollection.CHAT_MODEL)
-    result = await collection.insert_one(model.model_dump())
-    return str(result.inserted_id)
+    not_found_msg = f'No chat model with id {model_id} found.'
+    return await get_by_id(model_id, MongoCollection.CHAT_MODEL, not_found_msg)
 
 
 async def update_model(model_id: str, model: LLMConfiguration):
-    collection = get_collection(MongoCollection.CHAT_MODEL)
-    query_filter = {'_id': ObjectId(model_id)}
-    update_operation = {'$set': model.model_dump()}
-    result = await collection.update_one(query_filter, update_operation)
-    if result.modified_count == 0:
-        raise NotFoundError(f'Cannot update chat model with id {model_id}. Because no chat model found.')
+    not_found_msg = f'Cannot update chat model with id {model_id}. Because no chat model found.'
+    await update_by_id(model_id, model, MongoCollection.CHAT_MODEL, not_found_msg)
 
 
 # Google GenAI
@@ -126,7 +111,7 @@ async def get_genai_model(model_id: str):
     status_code=status.HTTP_201_CREATED)
 async def create_genai_model(data: GoogleGenAIChatModelCreateBody):
     model = GoogleGenAIChatModel.model_validate(data.model_dump())
-    return await create_model(model)
+    return await create_document(model, MongoCollection.CHAT_MODEL)
 
 
 @router.put(
@@ -154,7 +139,7 @@ async def get_ollama_model(model_id: str):
     status_code=status.HTTP_201_CREATED)
 async def create_ollama_model(data: OllamaChatModelCreateBody):
     model = OllamaChatModel.model_validate(data.model_dump())
-    return await create_model(model)
+    return await create_document(model, MongoCollection.CHAT_MODEL)
 
 
 @router.put(
@@ -181,5 +166,4 @@ async def get_all_models(params: PagingQuery):
     description="Delete a chat model.",
     status_code=status.HTTP_204_NO_CONTENT)
 async def delete(model_id: str):
-    collection = get_collection(MongoCollection.CHAT_MODEL)
-    await collection.delete_one({"_id": ObjectId(model_id)})
+    await delete_by_id(model_id, MongoCollection.CHAT_MODEL)
