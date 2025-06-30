@@ -40,6 +40,15 @@ PromptUpdateBody = Annotated[PromptUpdate, Body(
 
 
 @router.get(
+    path="/all",
+    description="Get prompt entities. Check prompt entities data response at corresponding endpoints.",
+    status_code=status.HTTP_200_OK)
+async def get_all_prompts(params: PagingQuery):
+    collection = get_collection(MongoCollection.PROMPT)
+    return await PagingWrapper.get_paging(params, collection)
+
+
+@router.get(
     path="/{prompt_id}",
     response_model=PromptPublic,
     description="Get a prompt by its ID.",
@@ -64,15 +73,6 @@ async def create(data: PromptCreateBody):
 async def update(prompt_id: str, data: PromptUpdateBody):
     model = Prompt.model_validate(data.model_dump())
     await update_by_id(prompt_id, model, MongoCollection.PROMPT)
-
-
-@router.get(
-    path="/all",
-    description="Get prompt entities. Check prompt entities data response at corresponding endpoints.",
-    status_code=status.HTTP_200_OK)
-async def get_all_prompts(params: PagingQuery):
-    collection = get_collection(MongoCollection.PROMPT)
-    return await PagingWrapper.get_paging(params, collection)
 
 
 @router.delete(
