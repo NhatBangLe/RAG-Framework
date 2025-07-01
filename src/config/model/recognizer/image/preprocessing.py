@@ -2,9 +2,15 @@ from enum import Enum
 from typing import Sequence
 
 from pydantic import Field, field_validator
-from torchvision.transforms import InterpolationMode
 
 from src.config.model.recognizer.image import ImagePreprocessingConfiguration
+
+
+class InterpolationMode(str, Enum):
+    NEAREST = "nearest"
+    NEAREST_EXACT = "nearest-exact"
+    BILINEAR = "bilinear"
+    BICUBIC = "bicubic"
 
 
 class ImageResizeConfiguration(ImagePreprocessingConfiguration):
@@ -73,7 +79,7 @@ class ImageCenterCropConfiguration(ImagePreprocessingConfiguration):
     Crops the given image at the center.
     If the image is torch Tensor, it is expected
     to have [..., H, W] shape, where ... means an arbitrary number of leading dimensions.
-    If image size is smaller than output size along any edge, image is padded with 0 and then center cropped.
+    If the image size is smaller than the output size along any edge, the image is padded with 0 and then center cropped.
     """
 
     size: Sequence[int] | int = Field(
@@ -84,7 +90,7 @@ class ImageCenterCropConfiguration(ImagePreprocessingConfiguration):
 
 class PaddingMode(str, Enum):
     """
-    Type of padding. Should be: constant, edge, reflect or symmetric.
+    Type of padding. Should be: constant, edge, reflect, or symmetric.
     Default is constant.
 
     - CONSTANT: pads with a constant value, this value is specified with fill
@@ -92,8 +98,8 @@ class PaddingMode(str, Enum):
     - EDGE: pads with the last value at the edge of the image.
       If input a 5D torch Tensor, the last 3 dimensions will be padded instead of the last 2
 
-    - REFLECT: pads with reflection of image without repeating the last value on the edge.
-      For example, padding [1, 2, 3, 4] with 2 elements on both sides in reflect mode
+    - REFLECT: pads with reflection of the image without repeating the last value on the edge.
+      For example, padding [1, 2, 3, 4] with 2 elements on both sides in reflection mode
       will result in [3, 2, 1, 2, 3, 4, 3, 2]
 
     - SYMMETRIC: pads with reflection of image repeating the last value on the edge.
