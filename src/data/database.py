@@ -16,6 +16,8 @@ class MongoCollection(str, Enum):
     RECOGNIZER = "recognizer"
     RETRIEVER = "retriever"
     EMBEDDINGS = "embeddings"
+    MCP = "mcp"
+    AGENT = "agent"
 
 
 def get_database():

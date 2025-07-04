@@ -149,7 +149,7 @@ class ImageGrayscaleConfiguration(ImagePreprocessingConfiguration):
     """
 
     num_output_channels: int = Field(
-        default="center",
+        default=3,
         description="(1 or 3) number of channels desired for output image.")
 
     @field_validator('num_output_channels', mode="after")
