@@ -31,6 +31,7 @@ router = APIRouter(
 
 ImageRecognizerCreateBody = Annotated[ImageRecognizerCreate, Body(
     example={
+        "name": "YOLOv11-cls",
         "model_file_id": "686003f271e4995bcb0c2d0f",
         "min_probability": 0.75,
         "max_results": 5,
@@ -51,54 +52,37 @@ ImageRecognizerCreateBody = Annotated[ImageRecognizerCreate, Body(
         "preprocessing": [
             {
                 "type": "resize",
-                "config": {
-                    "target_size": 256,
-                    "interpolation": "bicubic",
-                    "max_size": 512,
-                    "antialias": True
-                }
+                "target_size": 256,
+                "interpolation": "bicubic",
+                "max_size": 512,
+                "antialias": True
             },
             {
                 "type": "normalize",
-                "config": {
-                    "mean": [
-                        0.485,
-                        0.456,
-                        0.406
-                    ],
-                    "std": [
-                        0.229,
-                        0.224,
-                        0.225
-                    ],
-                    "inplace": False
-                }
+                "mean": [0.485, 0.456, 0.406],
+                "std": [0.229, 0.224, 0.225],
+                "inplace": False
             },
             {
                 "type": "center_crop",
-                "config": {
-                    "size": 224
-                }
+                "size": [64, 64]
             },
             {
                 "type": "pad",
-                "config": {
-                    "padding": 20,
-                    "fill": 128,
-                    "padding_mode": "edge"
-                }
+                "padding": 10,
+                "fill": 0,
+                "padding_mode": "constant"
             },
             {
                 "type": "grayscale",
-                "config": {
-                    "num_output_channels": 1
-                }
-            }
+                "num_output_channels": 3
+            },
         ],
     }
 )]
 ImageRecognizerUpdateBody = Annotated[ImageRecognizerUpdate, Body(
     example={
+        "name": "YOLOv8-cls",
         "min_probability": 0.75,
         "max_results": 5,
         "output_classes": [
@@ -114,33 +98,25 @@ ImageRecognizerUpdateBody = Annotated[ImageRecognizerUpdate, Body(
         "preprocessing": [
             {
                 "type": "resize",
-                "config": {
-                    "target_size": 256,
-                    "interpolation": "bicubic",
-                    "max_size": 512,
-                    "antialias": True
-                }
+                "target_size": 256,
+                "interpolation": "bicubic",
+                "max_size": 512,
+                "antialias": True
             },
             {
                 "type": "center_crop",
-                "config": {
-                    "size": 224
-                }
+                "size": [64, 64]
             },
             {
                 "type": "pad",
-                "config": {
-                    "padding": 20,
-                    "fill": 128,
-                    "padding_mode": "edge"
-                }
+                "padding": 10,
+                "fill": 0,
+                "padding_mode": "constant"
             },
             {
                 "type": "grayscale",
-                "config": {
-                    "num_output_channels": 1
-                }
-            }
+                "num_output_channels": 3
+            },
         ],
     }
 )]

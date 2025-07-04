@@ -149,12 +149,12 @@ class ImageGrayscaleConfiguration(ImagePreprocessingConfiguration):
     """
 
     num_output_channels: int = Field(
-        default=3,
+        default=3, ge=1, le=3,
         description="(1 or 3) number of channels desired for output image.")
 
     @field_validator('num_output_channels', mode="after")
     @classmethod
     def validate_num_output_channels(cls, v: int):
-        if v != 1 or v != 3:
+        if v != 1 and v != 3:
             raise ValueError("num_output_channels must be 1 or 3.")
         return v
