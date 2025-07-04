@@ -6,9 +6,9 @@ from starlette import status
 
 from ..config.model.chat_model import LLMConfiguration
 from ..data.database import get_collection, MongoCollection, get_by_id, create_document, update_by_id, delete_by_id
-from ..data.dto import GoogleGenAIChatModelPublic, GoogleGenAIChatModelCreate, OllamaChatModelCreate, \
+from ..data.dto.chat_model import GoogleGenAIChatModelPublic, GoogleGenAIChatModelCreate, OllamaChatModelCreate, \
     OllamaChatModelPublic, GoogleGenAIChatModelUpdate, OllamaChatModelUpdate
-from ..data.model import GoogleGenAIChatModel, OllamaChatModel
+from ..data.model.chat_model import GoogleGenAIChatModel, OllamaChatModel
 from ..dependency import PagingQuery
 from ..util import PagingWrapper
 

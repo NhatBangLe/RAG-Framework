@@ -5,9 +5,9 @@ from fastapi import APIRouter, status, Body
 
 from ..config.model.embeddings import EmbeddingsConfiguration
 from ..data.database import get_collection, MongoCollection, get_by_id, create_document, update_by_id
-from ..data.dto import GoogleGenAIEmbeddingsPublic, GoogleGenAIEmbeddingsCreate, GoogleGenAIEmbeddingsUpdate, \
+from ..data.dto.embeddings import GoogleGenAIEmbeddingsPublic, GoogleGenAIEmbeddingsCreate, GoogleGenAIEmbeddingsUpdate, \
     HuggingFaceEmbeddingsCreate, HuggingFaceEmbeddingsUpdate, HuggingFaceEmbeddingsPublic
-from ..data.model import GoogleGenAIEmbeddings, HuggingFaceEmbeddings
+from ..data.model.embeddings import GoogleGenAIEmbeddings, HuggingFaceEmbeddings
 from ..dependency import PagingQuery
 from ..util import PagingWrapper
 

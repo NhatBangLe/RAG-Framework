@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, status, Body
 
 from src.data.database import MongoCollection, get_by_id, create_document, update_by_id, delete_by_id, get_collection
-from src.data.dto import PromptPublic, PromptCreate, PromptUpdate
+from src.data.dto.prompt import PromptPublic, PromptCreate, PromptUpdate
 from src.data.model import Prompt
 from src.dependency import PagingQuery
 from src.util import PagingWrapper
