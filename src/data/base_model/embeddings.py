@@ -1,14 +1,12 @@
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from ...config.model.embeddings import EmbeddingsConfiguration
 from ...config.model.embeddings.google_genai import GoogleGenAIEmbeddingsTaskType
 
 
-class BaseGoogleGenAIEmbeddings(BaseModel):
-    name: str
-    model_name: str = Field(min_length=1)
+class BaseGoogleGenAIEmbeddings(EmbeddingsConfiguration):
     task_type: GoogleGenAIEmbeddingsTaskType | None = Field(default=None)
 
 
-class BaseHuggingFaceEmbeddings(BaseModel):
-    name: str
-    model_name: str = Field(min_length=1)
+class BaseHuggingFaceEmbeddings(EmbeddingsConfiguration):
+    pass
