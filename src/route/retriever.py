@@ -11,7 +11,7 @@ from ..util import PagingWrapper
 from ..util.error import InvalidArgumentError
 
 
-async def get_retriever(retriever_id: str):
+async def get_document(retriever_id: str):
     not_found_msg = f'No retriever with id {retriever_id} found.'
     return await get_by_id(retriever_id, MongoCollection.RETRIEVER, not_found_msg)
 
@@ -25,7 +25,7 @@ def get_model(base_retriever: BaseRetriever):
         raise InvalidArgumentError(f'Retriever type {base_retriever.type} is not supported.')
 
 
-async def update_retriever(retriever_id: str, data: BaseRetriever):
+async def update_document(retriever_id: str, data: BaseRetriever):
     not_found_msg = f'Cannot update retriever with id {retriever_id}. Because no retriever found.'
     await update_by_id(retriever_id, data, MongoCollection.RETRIEVER, not_found_msg)
 
@@ -113,7 +113,7 @@ async def get_all(params: PagingQuery):
     description="Get a retriever by its ID.",
     status_code=status.HTTP_200_OK)
 async def get_retriever(retriever_id: str):
-    return await get_retriever(retriever_id)
+    return await get_document(retriever_id)
 
 
 @router.post(
@@ -129,7 +129,7 @@ async def create_retriever(body: RetrieverCreateBody) -> str:
     description="Update a retriever.",
     status_code=status.HTTP_204_NO_CONTENT)
 async def update_retriever(retriever_id: str, body: RetrieverUpdateBody) -> None:
-    await update_retriever(retriever_id, body)
+    await update_document(retriever_id, body)
 
 
 @router.delete(

@@ -30,3 +30,8 @@ class OllamaChatModelUpdate(BaseOllamaChatModel):
 class OllamaChatModelPublic(OllamaLLMConfiguration):
     id: PyObjectId = Field(validation_alias="_id")
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
+
+
+ChatModelCreate = GoogleGenAIChatModelCreate | OllamaChatModelCreate
+ChatModelUpdate = GoogleGenAIChatModelUpdate | OllamaChatModelUpdate
+ChatModelPublic = GoogleGenAIChatModelPublic | OllamaChatModelPublic

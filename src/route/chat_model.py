@@ -4,13 +4,14 @@ from fastapi import APIRouter
 from fastapi.params import Body
 from starlette import status
 
-from ..config.model.chat_model import LLMConfiguration
+from ..data.base_model.chat_model import BaseChatModel, ChatModelType
 from ..data.database import get_collection, MongoCollection, get_by_id, create_document, update_by_id, delete_by_id
-from ..data.dto.chat_model import GoogleGenAIChatModelPublic, GoogleGenAIChatModelCreate, OllamaChatModelCreate, \
-    OllamaChatModelPublic, GoogleGenAIChatModelUpdate, OllamaChatModelUpdate
+from ..data.dto.chat_model import ChatModelCreate, ChatModelUpdate, \
+    ChatModelPublic
 from ..data.model.chat_model import GoogleGenAIChatModel, OllamaChatModel
 from ..dependency import PagingQuery
 from ..util import PagingWrapper
+from ..util.error import InvalidArgumentError
 
 router = APIRouter(
     prefix="/api/v1/chat-model",
@@ -21,7 +22,7 @@ router = APIRouter(
     },
 )
 
-GoogleGenAIChatModelCreateBody = Annotated[GoogleGenAIChatModelCreate, Body(
+ChatModelCreateBody = Annotated[ChatModelCreate, Body(
     example={
         "model_name": "gemini-2.0-flash",
         "temperature": 0.5,
@@ -38,7 +39,7 @@ GoogleGenAIChatModelCreateBody = Annotated[GoogleGenAIChatModelCreate, Body(
         }
     }
 )]
-GoogleGenAIChatModelUpdateBody = Annotated[GoogleGenAIChatModelUpdate, Body(
+ChatModelUpdateBody = Annotated[ChatModelUpdate, Body(
     example={
         "model_name": "gemini-2.0-flash",
         "temperature": 0.5,
@@ -55,115 +56,65 @@ GoogleGenAIChatModelUpdateBody = Annotated[GoogleGenAIChatModelUpdate, Body(
         }
     }
 )]
-OllamaChatModelCreateBody = Annotated[OllamaChatModelCreate, Body(
-    example={
-        "model_name": "deepseek-r1",
-        "base_url": "http://localhost:11434",
-        "temperature": 0.8,
-        "seed": None,
-        "num_ctx": 2048,
-        "num_predict": 128,
-        "repeat_penalty": 1.1,
-        "top_k": 40,
-        "top_p": 0.9,
-        "stop": ["</s>", "<|eot_id|>"]
-    }
-)]
-OllamaChatModelUpdateBody = Annotated[OllamaChatModelUpdate, Body(
-    example={
-        "model_name": "deepseek-r1",
-        "base_url": "http://localhost:11434",
-        "temperature": 0.8,
-        "seed": None,
-        "num_ctx": 2048,
-        "num_predict": 128,
-        "repeat_penalty": 1.1,
-        "top_k": 40,
-        "top_p": 0.9,
-        "stop": ["</s>", "<|eot_id|>"]
-    }
-)]
 
 
-async def get_model(model_id: str):
+async def get_document(model_id: str):
     not_found_msg = f'No chat model with id {model_id} found.'
     return await get_by_id(model_id, MongoCollection.CHAT_MODEL, not_found_msg)
 
 
-async def update_model(model_id: str, model: LLMConfiguration):
+def get_model(base_data: BaseChatModel):
+    if base_data.type == ChatModelType.GOOGLE_GENAI:
+        return GoogleGenAIChatModel.model_validate(base_data.model_dump())
+    elif base_data.type == ChatModelType.OLLAMA:
+        return OllamaChatModel.model_validate(base_data.model_dump())
+    else:
+        raise InvalidArgumentError(f'Chat model type {base_data.type} is not supported.')
+
+
+async def update_document(model_id: str, model: BaseChatModel):
     not_found_msg = f'Cannot update chat model with id {model_id}. Because no chat model found.'
     await update_by_id(model_id, model, MongoCollection.CHAT_MODEL, not_found_msg)
 
 
-# Google GenAI
-@router.get(
-    path="/google-genai/{model_id}",
-    response_model=GoogleGenAIChatModelPublic,
-    description="Get a Google GenAI chat model.",
-    status_code=status.HTTP_200_OK)
-async def get_genai_model(model_id: str):
-    return await get_model(model_id)
-
-
-@router.post(
-    path="/google-genai",
-    description="Create a Google GenAI chat model.",
-    status_code=status.HTTP_201_CREATED)
-async def create_genai_model(data: GoogleGenAIChatModelCreateBody):
-    model = GoogleGenAIChatModel.model_validate(data.model_dump())
-    return await create_document(model, MongoCollection.CHAT_MODEL)
-
-
-@router.put(
-    path="/google-genai/{model_id}",
-    description="Update a Google GenAI chat model.",
-    status_code=status.HTTP_204_NO_CONTENT)
-async def update_genai_model(model_id: str, data: GoogleGenAIChatModelUpdateBody):
-    model = GoogleGenAIChatModel.model_validate(data.model_dump())
-    await update_model(model_id, model)
-
-
-# Ollama
-@router.get(
-    path="/ollama/{model_id}",
-    response_model=OllamaChatModelPublic,
-    description="Get an Ollama chat model.",
-    status_code=status.HTTP_200_OK)
-async def get_ollama_model(model_id: str):
-    return await get_model(model_id)
-
-
-@router.post(
-    path="/ollama",
-    description="Create an Ollama chat model.",
-    status_code=status.HTTP_201_CREATED)
-async def create_ollama_model(data: OllamaChatModelCreateBody):
-    model = OllamaChatModel.model_validate(data.model_dump())
-    return await create_document(model, MongoCollection.CHAT_MODEL)
-
-
-@router.put(
-    path="/ollama/{model_id}",
-    description="Update an Ollama chat model.",
-    status_code=status.HTTP_204_NO_CONTENT)
-async def update_ollama_model(model_id: str, data: OllamaChatModelUpdateBody):
-    model = OllamaChatModel.model_validate(data.model_dump())
-    await update_model(model_id, model)
-
-
-# Global
 @router.get(
     path="/all",
     description="Get all chat models. Check chat model data response at corresponding endpoints.",
+    response_model=PagingWrapper,
     status_code=status.HTTP_200_OK)
 async def get_all_models(params: PagingQuery):
     collection = get_collection(MongoCollection.CHAT_MODEL)
     return await PagingWrapper.get_paging(params, collection)
 
 
+@router.get(
+    path="/{chat_model_id}",
+    response_model=ChatModelPublic,
+    description="Get a chat model.",
+    status_code=status.HTTP_200_OK)
+async def get_chat_model(chat_model_id: str):
+    return await get_chat_model(chat_model_id)
+
+
+@router.post(
+    path="/create",
+    description="Create a chat model.",
+    status_code=status.HTTP_201_CREATED)
+async def create_chat_model(body: ChatModelCreateBody) -> str:
+    return await create_document(get_model(body), MongoCollection.CHAT_MODEL)
+
+
+@router.put(
+    path="/{chat_model_id}/update",
+    description="Update a chat model.",
+    status_code=status.HTTP_204_NO_CONTENT)
+async def update_chat_model(chat_model_id: str, body: ChatModelUpdateBody) -> None:
+    await update_document(chat_model_id, body)
+
+
 @router.delete(
-    path="/{model_id}",
+    path="/{chat_model_id}",
     description="Delete a chat model.",
     status_code=status.HTTP_204_NO_CONTENT)
-async def delete(model_id: str):
-    await delete_by_id(model_id, MongoCollection.CHAT_MODEL)
+async def delete_chat_model(chat_model_id: str) -> None:
+    await delete_by_id(chat_model_id, MongoCollection.CHAT_MODEL)
