@@ -1,10 +1,20 @@
 from enum import Enum
-from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from ...config.model.recognizer import RecognizerConfiguration
+from ...config.model.recognizer.image import ImageRecognizerConfiguration
 from ...config.model.recognizer.image.preprocessing import ImageResizeConfiguration, ImageNormalizeConfiguration, \
     ImageCenterCropConfiguration, ImagePadConfiguration, ImageGrayscaleConfiguration
+
+
+class RecognizerType(str, Enum):
+    IMAGE = "image"
+
+
+class BaseRecognizer(RecognizerConfiguration):
+    name: str = Field(description="Name of the recognizer", min_length=1, max_length=100)
+    type: RecognizerType = Field(description="Type of the recognizer.", frozen=True)
 
 
 class OutputClass(BaseModel):
@@ -21,35 +31,38 @@ class ImagePreprocessingType(str, Enum):
     NORMALIZE = "normalize"
 
 
-class ImageResize(ImageResizeConfiguration):
-    type: Literal["resize"] = "resize"
+class BaseImagePreprocessing(BaseModel):
+    type: ImagePreprocessingType = Field(description="Type of the preprocessing.", frozen=True)
 
 
-class ImageNormalize(ImageNormalizeConfiguration):
-    type: Literal["normalize"] = "normalize"
+class ImageResize(BaseImagePreprocessing, ImageResizeConfiguration):
+    type: ImagePreprocessingType = ImagePreprocessingType.RESIZE
 
 
-class ImageCenterCrop(ImageCenterCropConfiguration):
-    type: Literal["center_crop"] = "center_crop"
+class ImageNormalize(BaseImagePreprocessing, ImageNormalizeConfiguration):
+    type: ImagePreprocessingType = ImagePreprocessingType.NORMALIZE
 
 
-class ImagePad(ImagePadConfiguration):
-    type: Literal["pad"] = "pad"
+class ImageCenterCrop(BaseImagePreprocessing, ImageCenterCropConfiguration):
+    type: ImagePreprocessingType = ImagePreprocessingType.CENTER_CROP
 
 
-class ImageGrayscale(ImageGrayscaleConfiguration):
-    type: Literal["grayscale"] = "grayscale"
+class ImagePad(BaseImagePreprocessing, ImagePadConfiguration):
+    type: ImagePreprocessingType = ImagePreprocessingType.PAD
+
+
+class ImageGrayscale(BaseImagePreprocessing, ImageGrayscaleConfiguration):
+    type: ImagePreprocessingType = ImagePreprocessingType.GRAYSCALE
 
 
 PreprocessingType = ImageResize | ImageNormalize | ImageCenterCrop | ImagePad | ImageGrayscale
 
 
-class BaseImageRecognizer(BaseModel):
-    name: str = Field(description="Name of the recognizer", min_length=1, max_length=100)
-    min_probability: float = Field(default=0.6, ge=0.0, le=1.0)
-    max_results: int = Field(default=4, ge=1, le=50)
+class BaseImageRecognizer(BaseRecognizer, ImageRecognizerConfiguration):
+    type: RecognizerType = RecognizerType.IMAGE
     output_classes: list[OutputClass] = Field(min_length=1)
-    preprocessing: list[PreprocessingType] | None = Field(
+    model_file_id: str = Field(min_length=1)
+    preprocessing_configs: list[PreprocessingType] | None = Field(
         default=None,
         examples=[[
             {
@@ -80,3 +93,10 @@ class BaseImageRecognizer(BaseModel):
                 "num_output_channels": 3
             },
         ]])
+
+    # Exclude fields
+    enable: bool = Field(default=True, exclude=True)
+    path: str | None = Field(default=None, exclude=True)
+    output_config_path: str | None = Field(default=None, exclude=True)
+    device: str | None = Field(default=None, exclude=True)
+    preprocessing: list | None = Field(default=None)

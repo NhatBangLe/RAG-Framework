@@ -1,23 +1,31 @@
 from typing import Annotated
 
 from fastapi import APIRouter, status, Body
-from pydantic import BaseModel
 
+from ..data.base_model.recognizer import BaseRecognizer, RecognizerType
 from ..data.database import get_collection, MongoCollection, get_by_id, delete_by_id, update_by_id, create_document
-from ..data.dto.recognizer import ImageRecognizerPublic, ImageRecognizerCreate, ImageRecognizerUpdate
+from ..data.dto.recognizer import ImageRecognizerCreate, ImageRecognizerUpdate, RecognizerPublic
 from ..data.model.recognizer import ImageRecognizer
 from ..dependency import PagingQuery
 from ..util import PagingWrapper
+from ..util.error import InvalidArgumentError
 
 
-async def get_recognizer(recognizer_id: str):
+async def get_document(recognizer_id: str):
     not_found_msg = f'No recognizer with id {recognizer_id} found.'
-    return await get_by_id(recognizer_id, MongoCollection.RECOGNIZER, not_found_msg)
+    return await get_by_id(recognizer_id, MongoCollection.EMBEDDINGS, not_found_msg)
 
 
-async def update_model(model_id: str, model: BaseModel):
-    not_found_msg = f'Cannot update recognizer with id {model_id}. Because no recognizer found.'
-    await update_by_id(model_id, model, MongoCollection.RECOGNIZER, not_found_msg)
+def get_model(base_data: BaseRecognizer):
+    if base_data.type == RecognizerType.IMAGE:
+        return ImageRecognizer.model_validate(base_data.model_dump())
+    else:
+        raise InvalidArgumentError(f'Retriever type {base_data.type} is not supported.')
+
+
+async def update_document(recognizer_id: str, model: BaseRecognizer):
+    not_found_msg = f'Cannot update recognizer with id {recognizer_id}. Because no recognizer found.'
+    await update_by_id(recognizer_id, model, MongoCollection.EMBEDDINGS, not_found_msg)
 
 
 router = APIRouter(
@@ -133,17 +141,17 @@ async def get_all(params: PagingQuery):
 
 
 @router.get(
-    path="/image/{recognizer_id}",
-    response_model=ImageRecognizerPublic,
-    description="Get an image recognizer by its ID.",
+    path="/{recognizer_id}",
+    response_model=RecognizerPublic,
+    description="Get a recognizer by its ID.",
     status_code=status.HTTP_200_OK)
 async def get_image_recognizer(recognizer_id: str):
-    return await get_recognizer(recognizer_id)
+    return await get_document(recognizer_id)
 
 
 @router.post(
-    path="/image/create",
-    description="Create an image recognizer.",
+    path="/create",
+    description="Create a recognizer.",
     status_code=status.HTTP_200_OK)
 async def create_image_recognizer(body: ImageRecognizerCreateBody) -> str:
     model = ImageRecognizer.model_validate(body.model_dump())
@@ -151,11 +159,11 @@ async def create_image_recognizer(body: ImageRecognizerCreateBody) -> str:
 
 
 @router.put(
-    path="/image/{recognizer_id}/update",
+    path="/{recognizer_id}/update",
     description="Update a recognizer.",
     status_code=status.HTTP_204_NO_CONTENT)
 async def update_image_recognizer(recognizer_id: str, body: ImageRecognizerUpdateBody) -> None:
-    await update_model(recognizer_id, body)
+    await update_document(recognizer_id, body)
 
 
 @router.delete(
