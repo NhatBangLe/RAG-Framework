@@ -42,6 +42,7 @@ PromptUpdateBody = Annotated[PromptUpdate, Body(
 @router.get(
     path="/all",
     description="Get prompt entities. Check prompt entities data response at corresponding endpoints.",
+    response_model=PagingWrapper[PromptPublic],
     status_code=status.HTTP_200_OK)
 async def get_all_prompts(params: PagingQuery):
     collection = get_collection(MongoCollection.PROMPT)

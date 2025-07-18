@@ -1,8 +1,8 @@
 from pydantic import Field, ConfigDict
 
-from src.config.model.agent import AgentConfiguration
-from src.config.model.prompt import PromptConfiguration
-from src.data import PyObjectId
+from .. import PyObjectId
+from ..base_model import BasePrompt
+from ...config.model.agent import AgentConfiguration
 
 
 class Agent(AgentConfiguration):
@@ -10,6 +10,6 @@ class Agent(AgentConfiguration):
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
 
-class Prompt(PromptConfiguration):
+class Prompt(BasePrompt):
     id: PyObjectId | None = Field(alias="_id", exclude=True, default=None)
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
