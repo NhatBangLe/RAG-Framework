@@ -18,6 +18,7 @@ from src.route.prompt import router as prompt_router
 from src.route.embeddings import router as embeddings_router
 from src.route.retriever import router as retriever_router
 from src.route.recognizer import router as recognizer_router
+from src.route.mcp import router as mcp_router
 from src.util.error import NotFoundError, InvalidArgumentError
 
 
@@ -76,6 +77,7 @@ app.include_router(prompt_router)
 app.include_router(retriever_router)
 app.include_router(embeddings_router)
 app.include_router(recognizer_router)
+app.include_router(mcp_router)
 
 
 # Global routes
