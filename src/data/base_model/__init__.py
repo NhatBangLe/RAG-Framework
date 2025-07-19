@@ -1,7 +1,10 @@
+import datetime
+
 from pydantic import BaseModel, Field, field_validator
 
 from ...config.model.mcp import StreamableConnectionConfiguration, StdioConnectionConfiguration
 from ...util.constant import SUPPORTED_LANGUAGE_DICT
+from ...util.function import get_datetime_now
 
 
 # noinspection PyNestedDecorators
@@ -52,3 +55,4 @@ class BaseFile(BaseModel):
     name: str = Field(description="Name of the file.", min_length=1)
     path: str = Field(description="Path to the file.", min_length=1)
     mime_type: str | None = Field(default=None, description="MIME type of the file.", min_length=1)
+    created_at: datetime.datetime = Field(default_factory=get_datetime_now)

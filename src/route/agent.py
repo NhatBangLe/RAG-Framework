@@ -1,4 +1,3 @@
-import datetime
 import shutil
 from pathlib import Path
 from typing import Annotated
@@ -13,9 +12,8 @@ from ..data.dto.agent import AgentCreate, AgentUpdate, AgentPublic
 from ..data.model import Agent
 from ..dependency import DownloadGeneratorDep, PagingQuery
 from ..util import SecureDownloadGenerator, FileInformation, PagingWrapper
-from ..util.constant import DEFAULT_TIMEZONE
 from ..util.error import NotFoundError
-from ..util.function import zip_folder, get_cache_dir_path
+from ..util.function import zip_folder, get_cache_dir_path, get_datetime_now
 
 router = APIRouter(
     prefix="/api/v1/agent",
@@ -79,7 +77,7 @@ async def export_agent_config(agent_id: str, generator: SecureDownloadGenerator)
 
     # Prepare for exporting
     cache_dir = Path(get_cache_dir_path())
-    current_datetime = datetime.datetime.now(DEFAULT_TIMEZONE)
+    current_datetime = get_datetime_now()
     folder_for_exporting = cache_dir.joinpath(agent.id)
     file_ext = ".zip"
     exported_file = folder_for_exporting.with_name(f'{folder_for_exporting.name}{file_ext}')

@@ -1,9 +1,15 @@
+import datetime
 import os
 import uuid
 import zipfile
 from pathlib import Path
 
+from .constant import DEFAULT_TIMEZONE
 from .error import InvalidArgumentError
+
+
+def get_datetime_now():
+    return datetime.datetime.now(DEFAULT_TIMEZONE)
 
 
 def strict_uuid_parser(uuid_string: str) -> uuid.UUID:
