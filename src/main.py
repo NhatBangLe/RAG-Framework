@@ -18,6 +18,8 @@ from src.route.mcp import router as mcp_router
 from src.route.prompt import router as prompt_router
 from src.route.recognizer import router as recognizer_router
 from src.route.retriever import router as retriever_router
+from src.route.agent import router as agent_router
+from src.route.file import router as file_router
 from src.util.constant import EnvVar
 from src.util.error import NotFoundError, InvalidArgumentError
 
@@ -78,6 +80,8 @@ app.include_router(retriever_router)
 app.include_router(embeddings_router)
 app.include_router(recognizer_router)
 app.include_router(mcp_router)
+app.include_router(agent_router)
+app.include_router(file_router)
 
 
 # Global routes

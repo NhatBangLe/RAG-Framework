@@ -1,11 +1,32 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ...config.model.mcp import StreamableConnectionConfiguration, StdioConnectionConfiguration
+from ...util.constant import SUPPORTED_LANGUAGE_DICT
+
+
+# noinspection PyNestedDecorators
+class BaseAgent(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: str | None = Field(default=None, max_length=255)
+    language: str = Field(description="Supported languages: vi, en")
+    image_recognizer_id: str = Field(description="Image recognizer configuration ID", min_length=1)
+    retriever_ids: list[str] = Field(description="Retriever configuration IDs", min_length=1)
+    tool_ids: list[str] | None = Field(description="Tool configuration IDs", default=None)
+    mcp_id: str | None = Field(description="MCP configuration ID", default=None)
+    llm_id: str = Field(description="Chat model configuration ID")
+    prompt_id: str = Field(description="Prompt configuration ID")
+
+    @field_validator("language", mode="after")
+    @classmethod
+    def validate_language(cls, v: str):
+        if v not in SUPPORTED_LANGUAGE_DICT:
+            raise ValueError(f'Unsupported {v} language.')
+        return v
 
 
 class BasePrompt(BaseModel):
-    suggest_questions_prompt: str = Field(min_length=8)
-    respond_prompt: str = Field(min_length=11)
+    suggest_questions_prompt: str = Field(min_length=1)
+    respond_prompt: str = Field(min_length=1)
 
 
 class BaseMCPServer(BaseModel):
@@ -25,3 +46,9 @@ SupportedMCPConfiguration = MCPStreamableServer | MCPStdioServer
 
 class BaseMCP(BaseModel):
     servers: list[SupportedMCPConfiguration] = Field(min_length=1)
+
+
+class BaseFile(BaseModel):
+    name: str = Field(description="Name of the file.", min_length=1)
+    path: str = Field(description="Path to the file.", min_length=1)
+    mime_type: str | None = Field(default=None, description="MIME type of the file.", min_length=1)
