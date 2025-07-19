@@ -2,8 +2,6 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from ...config.model.recognizer import RecognizerConfiguration
-from ...config.model.recognizer.image import ImageRecognizerConfiguration
 from ...config.model.recognizer.image.preprocessing import ImageResizeConfiguration, ImageNormalizeConfiguration, \
     ImageCenterCropConfiguration, ImagePadConfiguration, ImageGrayscaleConfiguration
 
@@ -12,9 +10,13 @@ class RecognizerType(str, Enum):
     IMAGE = "image"
 
 
-class BaseRecognizer(RecognizerConfiguration):
+class BaseRecognizer(BaseModel):
     name: str = Field(description="Name of the recognizer", min_length=1, max_length=100)
     type: RecognizerType = Field(description="Type of the recognizer.", frozen=True)
+    model_file_id: str = Field(min_length=1)
+    min_probability: float = Field(description="A low probability limit for specifying classes.", ge=0.0, le=1.0)
+    max_results: int = Field(description="The maximum number of results recognized is used for prompting.",
+                             default=4, ge=1, le=50)
 
 
 class OutputClass(BaseModel):
@@ -58,10 +60,9 @@ class ImageGrayscale(BaseImagePreprocessing, ImageGrayscaleConfiguration):
 PreprocessingType = ImageResize | ImageNormalize | ImageCenterCrop | ImagePad | ImageGrayscale
 
 
-class BaseImageRecognizer(BaseRecognizer, ImageRecognizerConfiguration):
+class BaseImageRecognizer(BaseRecognizer):
     type: RecognizerType = RecognizerType.IMAGE
     output_classes: list[OutputClass] = Field(min_length=1)
-    model_file_id: str = Field(min_length=1)
     preprocessing_configs: list[PreprocessingType] | None = Field(
         default=None,
         examples=[[
@@ -93,10 +94,3 @@ class BaseImageRecognizer(BaseRecognizer, ImageRecognizerConfiguration):
                 "num_output_channels": 3
             },
         ]])
-
-    # Exclude fields
-    enable: bool = Field(default=True, exclude=True)
-    path: str | None = Field(default=None, exclude=True)
-    output_config_path: str | None = Field(default=None, exclude=True)
-    device: str | None = Field(default=None, exclude=True)
-    preprocessing: list | None = Field(default=None)
