@@ -36,7 +36,7 @@ class ImageResizeConfiguration(ImagePreprocessingConfiguration):
                     "the resized image. If the longer edge of the image is greater "
                     "than `max_size` after being resized according to size, "
                     "`size` will be overruled so that the longer edge is equal to `max_size`. "
-                    "As a result, the smaller edge may be shorter than `size`."),
+                    "As a result, the smaller edge may be shorter than `size`.")
     antialias: bool | None = Field(
         default=True,
         description="Whether to apply antialiasing."
