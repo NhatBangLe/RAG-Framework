@@ -1,8 +1,7 @@
 from enum import Enum
 
-from pydantic import Field
+from pydantic import Field, BaseModel, field_validator
 
-from ...config.model.chat_model import LLMConfiguration
 from ...config.model.chat_model.google_genai import HarmCategory, HarmBlockThreshold, GoogleGenAILLMConfiguration
 from ...config.model.chat_model.ollama import OllamaLLMConfiguration
 
@@ -12,8 +11,17 @@ class ChatModelType(str, Enum):
     OLLAMA = "ollama"
 
 
-class BaseChatModel(LLMConfiguration):
+# noinspection PyNestedDecorators
+class BaseChatModel(BaseModel):
     type: ChatModelType = Field(description="Type of the chat model.", frozen=True)
+    model_name: str = Field(min_length=1, max_length=100)
+
+    @field_validator("model_name", mode="after")
+    @classmethod
+    def validate_model_name(cls, model_name: str):
+        if len(model_name.strip()) == 0:
+            raise ValueError(f'model_name cannot be blank.')
+        return model_name
 
 
 class BaseGoogleGenAIChatModel(BaseChatModel, GoogleGenAILLMConfiguration):

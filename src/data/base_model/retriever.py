@@ -1,8 +1,7 @@
 from enum import Enum
 
-from pydantic import Field
+from pydantic import Field, field_validator, BaseModel
 
-from ...config.model.retriever import RetrieverConfiguration
 from ...config.model.retriever.bm25 import BM25Configuration
 from ...config.model.retriever.vector_store.chroma import ChromaVSConfiguration
 
@@ -12,8 +11,18 @@ class RetrieverType(str, Enum):
     CHROMA_DB = "chroma_db"
 
 
-class BaseRetriever(RetrieverConfiguration):
+# noinspection PyNestedDecorators
+class BaseRetriever(BaseModel):
     type: RetrieverType = Field(description="Type of the retriever.", frozen=True)
+    name: str = Field(description="An unique name is used for determining retrievers.", min_length=1, max_length=100)
+    weight: float = Field(description="Retriever weight for combining results", ge=0.0, le=1.0)
+
+    @field_validator("name", mode="after")
+    @classmethod
+    def validate_name(cls, name: str):
+        if len(name.strip()) == 0:
+            raise ValueError(f'name cannot be blank.')
+        return name
 
 
 class BaseBM25Retriever(BaseRetriever, BM25Configuration):

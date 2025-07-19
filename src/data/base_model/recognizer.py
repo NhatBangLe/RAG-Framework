@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ...config.model.recognizer.image.preprocessing import ImageResizeConfiguration, ImageNormalizeConfiguration, \
     ImageCenterCropConfiguration, ImagePadConfiguration, ImageGrayscaleConfiguration
@@ -10,6 +10,7 @@ class RecognizerType(str, Enum):
     IMAGE = "image"
 
 
+# noinspection PyNestedDecorators
 class BaseRecognizer(BaseModel):
     name: str = Field(description="Name of the recognizer", min_length=1, max_length=100)
     type: RecognizerType = Field(description="Type of the recognizer.", frozen=True)
@@ -17,6 +18,13 @@ class BaseRecognizer(BaseModel):
     min_probability: float = Field(description="A low probability limit for specifying classes.", ge=0.0, le=1.0)
     max_results: int = Field(description="The maximum number of results recognized is used for prompting.",
                              default=4, ge=1, le=50)
+
+    @field_validator("name", mode="after")
+    @classmethod
+    def validate_name(cls, name: str):
+        if len(name.strip()) == 0:
+            raise ValueError(f'name cannot be blank.')
+        return name
 
 
 class OutputClass(BaseModel):
