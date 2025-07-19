@@ -4,10 +4,8 @@ from enum import Enum
 from bson import ObjectId
 from pydantic import BaseModel
 
-from src.util.error import NotFoundError
-
-DB_URI = "MONGODB_URI"
-DB_NAME = "MONGODB_DATABASE"
+from ..util.constant import EnvVar
+from ..util.error import NotFoundError
 
 
 class MongoCollection(str, Enum):
@@ -18,11 +16,12 @@ class MongoCollection(str, Enum):
     EMBEDDINGS = "embeddings"
     MCP = "mcp"
     AGENT = "agent"
+    FILE = "file"
 
 
 def get_database():
     from ..main import mongodb_client
-    db_name = os.getenv(DB_NAME)
+    db_name = os.getenv(EnvVar.DB_NAME.value)
     return mongodb_client.get_database(db_name)
 
 

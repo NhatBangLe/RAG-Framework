@@ -11,14 +11,14 @@ from fastapi.responses import JSONResponse, FileResponse
 from pymongo import AsyncMongoClient
 from pymongo.server_api import ServerApi
 
-from src.data.database import DB_URI
 from src.dependency import DownloadGeneratorDep
 from src.route.chat_model import router as chat_model_router
-from src.route.prompt import router as prompt_router
 from src.route.embeddings import router as embeddings_router
-from src.route.retriever import router as retriever_router
-from src.route.recognizer import router as recognizer_router
 from src.route.mcp import router as mcp_router
+from src.route.prompt import router as prompt_router
+from src.route.recognizer import router as recognizer_router
+from src.route.retriever import router as retriever_router
+from src.util.constant import EnvVar
 from src.util.error import NotFoundError, InvalidArgumentError
 
 
@@ -51,7 +51,7 @@ setup_event_loop()
 setup_logging()
 
 # Create a new client and connect to the server
-mongodb_client = AsyncMongoClient(os.getenv(DB_URI), server_api=ServerApi('1'))
+mongodb_client = AsyncMongoClient(os.getenv(EnvVar.DB_URI.value), server_api=ServerApi('1'))
 
 
 # noinspection PyUnusedLocal
