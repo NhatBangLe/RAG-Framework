@@ -4,7 +4,7 @@ import uuid
 import zipfile
 from pathlib import Path
 
-from .constant import DEFAULT_TIMEZONE
+from .constant import DEFAULT_TIMEZONE, EnvVar
 from .error import InvalidArgumentError
 
 
@@ -45,4 +45,4 @@ def zip_folder(folder_path: str | os.PathLike[str], output_path: str | os.PathLi
 
 
 def get_cache_dir_path():
-    return os.getenv("CACHE_DIR", "/app/cache")
+    return os.getenv(EnvVar.CACHES_DIR.value, "/app/cache")
