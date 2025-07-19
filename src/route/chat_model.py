@@ -93,7 +93,7 @@ async def get_all_models(params: PagingQuery):
     description="Get a chat model.",
     status_code=status.HTTP_200_OK)
 async def get_chat_model(chat_model_id: str):
-    return await get_chat_model(chat_model_id)
+    return await get_document(chat_model_id)
 
 
 @router.post(
