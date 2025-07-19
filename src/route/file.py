@@ -20,14 +20,18 @@ router = APIRouter(
 )
 
 
+def get_document(file_id: str):
+    not_found_msg = f'No file with id {file_id} found.'
+    return get_by_id(file_id, MongoCollection.FILE, not_found_msg)
+
+
 @router.get(
     path="/{file_id}/metadata",
     response_model=FilePublic,
     description="Get a file by its ID.",
     status_code=status.HTTP_200_OK)
 async def get_file_by_id(file_id: str):
-    not_found_msg = f'No file with id {file_id} found.'
-    return await get_by_id(file_id, MongoCollection.FILE, not_found_msg)
+    return await get_document(file_id)
 
 
 @router.post(
@@ -49,4 +53,7 @@ async def upload_file(file: UploadFile) -> str:
     description="Delete a file.",
     status_code=status.HTTP_204_NO_CONTENT)
 async def delete_file(file_id: str) -> None:
+    file_dict = await get_document(file_id)
+    file = File.model_validate(file_dict)
+    Path(file.path).unlink(missing_ok=True)
     await delete_by_id(file_id, MongoCollection.FILE)
