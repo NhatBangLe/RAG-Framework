@@ -45,4 +45,4 @@ def zip_folder(folder_path: str | os.PathLike[str], output_path: str | os.PathLi
 
 
 def get_cache_dir_path():
-    return os.getenv(EnvVar.CACHES_DIR.value, "/app/cache")
+    return os.getenv(EnvVar.CACHE_DIR.value, "/app/cache")

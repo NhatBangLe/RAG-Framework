@@ -1,0 +1,230 @@
+from abc import ABC, abstractmethod
+from os import PathLike
+from pathlib import Path
+from typing import Any
+
+from .file import IFileService
+from ..base_model.recognizer import BaseRecognizer, RecognizerType, BaseImagePreprocessing, ImagePreprocessingType
+from ..database import get_by_id, MongoCollection, update_by_id, delete_by_id, get_collection, create_document
+from ..dto.recognizer import RecognizerUpdate, RecognizerCreate
+from ..model.recognizer import ImageRecognizer, Recognizer
+from ...config.model.recognizer import RecognizerConfiguration, ClassDescriptor, RecognizerOutput
+from ...config.model.recognizer.image import ImageRecognizerConfiguration, ImagePreprocessingConfiguration
+from ...config.model.recognizer.image.preprocessing import ImageResizeConfiguration, ImageGrayscaleConfiguration, \
+    ImageNormalizeConfiguration, ImageCenterCropConfiguration, ImagePadConfiguration
+from ...util import PagingParams, PagingWrapper
+from ...util.error import InvalidArgumentError
+
+
+class IRecognizerService(ABC):
+    """
+    Interface for managing recognizer models, including their configurations and preprocessing.
+    Defines the contract for services that interact with recognizer data and associated files.
+    """
+
+    @abstractmethod
+    async def get_all_models_with_paging(self, params: PagingParams) -> PagingWrapper[Recognizer]:
+        """
+        Retrieves all recognizer models with pagination.
+
+        Args:
+            params: Pagination parameters.
+
+        Returns:
+            A PagingWrapper containing a list of Recognizer models.
+        """
+        pass
+
+    @abstractmethod
+    async def get_model_by_id(self, recognizer_id: str) -> Recognizer:
+        """
+        Retrieves a recognizer model document by its ID.
+
+        Args:
+            recognizer_id: The unique identifier of the recognizer model.
+
+        Returns:
+            A Recognizer object representing the model.
+
+        Raises:
+            NotFoundError: If no recognizer with the given ID is found.
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_recognizer_type(base_data: BaseRecognizer) -> Recognizer:
+        """
+        Converts base recognizer data into a specific Recognizer instance
+        (e.g., ImageRecognizer) based on its type.
+
+        Args:
+            base_data: The base recognizer data.
+
+        Returns:
+            A specific Recognizer instance.
+
+        Raises:
+            InvalidArgumentError: If the recognizer type is not supported.
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_preprocessing_configuration(base_data: BaseImagePreprocessing) -> ImagePreprocessingConfiguration:
+        """
+        Converts base image preprocessing data into a specific ImagePreprocessingConfiguration
+        instance based on its type.
+
+        Args:
+            base_data: The base image preprocessing data.
+
+        Returns:
+            A specific ImagePreprocessingConfiguration instance.
+
+        Raises:
+            InvalidArgumentError: If the preprocessing type is not supported.
+        """
+        pass
+
+    @abstractmethod
+    async def get_configuration_by_id(self, recognizer_id: str,
+                                      export_dir: str | PathLike[str]) -> RecognizerConfiguration:
+        """
+        Retrieves a recognizer model by its ID, fetches its associated model file,
+        exports the file and output configuration to a specified directory,
+        and converts it into a RecognizerConfiguration object.
+
+        Args:
+            recognizer_id: The unique identifier of the recognizer model.
+            export_dir: The directory where the model file and output configuration will be exported.
+
+        Returns:
+            A RecognizerConfiguration object specific to the recognizer type.
+
+        Raises:
+            NotFoundError: If no recognizer or associated file with the given ID is found.
+            InvalidArgumentError: If the recognizer type is not supported for configuration.
+            IOError: If there's an issue with file system operations.
+        """
+        pass
+
+    @abstractmethod
+    async def create_new(self, body: RecognizerCreate) -> str:
+        """
+        Creates a new recognizer model.
+
+        Args:
+            body: The data for creating the new recognizer model.
+
+        Returns:
+            The ID of the newly created recognizer document.
+        """
+        pass
+
+    @abstractmethod
+    async def update_model_by_id(self, recognizer_id: str, model: RecognizerUpdate) -> None:
+        """
+        Updates an existing recognizer model by its ID.
+
+        Args:
+            recognizer_id: The unique identifier of the recognizer model to update.
+            model: The updated data for the recognizer model.
+
+        Raises:
+            NotFoundError: If no recognizer with the given ID is found.
+        """
+        pass
+
+    @abstractmethod
+    async def delete_model_by_id(self, recognizer_id: str) -> None:
+        """
+        Deletes a recognizer model by its ID.
+
+        Args:
+            recognizer_id: The unique identifier of the recognizer model to delete.
+
+        Raises:
+            NotFoundError: If no recognizer with the given ID is found.
+        """
+        pass
+
+
+class RecognizerServiceImpl(IRecognizerService):
+    def __init__(self, file_service: IFileService):
+        self._collection_name = MongoCollection.RECOGNIZER
+        self._file_service = file_service
+
+    async def get_all_models_with_paging(self, params):
+        collection = get_collection(self._collection_name)
+        return await PagingWrapper.get_paging(params, collection)
+
+    async def get_model_by_id(self, recognizer_id):
+        not_found_msg = f'No recognizer with id {recognizer_id} found.'
+        return await get_by_id(recognizer_id, self._collection_name, not_found_msg)
+
+    @staticmethod
+    def get_recognizer_type(base_data: BaseRecognizer):
+        if base_data.type == RecognizerType.IMAGE:
+            return ImageRecognizer.model_validate(base_data.model_dump())
+        else:
+            raise InvalidArgumentError(f'Chat model type {base_data.type} is not supported.')
+
+    @staticmethod
+    def get_preprocessing_configuration(base_data):
+        dict_value = base_data.model_dump()
+        if base_data.type == ImagePreprocessingType.RESIZE:
+            return ImageResizeConfiguration.model_validate(dict_value)
+        elif base_data.type == ImagePreprocessingType.PAD:
+            return ImagePadConfiguration.model_validate(dict_value)
+        elif base_data.type == ImagePreprocessingType.CENTER_CROP:
+            return ImageCenterCropConfiguration.model_validate(dict_value)
+        elif base_data.type == ImagePreprocessingType.NORMALIZE:
+            return ImageNormalizeConfiguration.model_validate(dict_value)
+        elif base_data.type == ImagePreprocessingType.GRAYSCALE:
+            return ImageGrayscaleConfiguration.model_validate(dict_value)
+        else:
+            raise InvalidArgumentError(f'Preprocessing type {base_data.type} is not supported.')
+
+    async def get_configuration_by_id(self, recognizer_id, export_dir):
+        doc_recognizer = await self.get_model_by_id(recognizer_id)
+        file_id: str = doc_recognizer["model_file_id"]
+        file = await self._file_service.get_file_by_id(file_id)
+        export_dir = Path(export_dir)
+        export_dir.mkdir(exist_ok=True)
+
+        file_data = Path(file.path).read_bytes()
+        export_dir.joinpath(file.name).write_bytes(file_data)
+
+        if doc_recognizer.type == RecognizerType.IMAGE:
+            img_recognizer = ImageRecognizer.model_validate(doc_recognizer)
+
+            output_file_name = "classes.json"
+            descriptors = [ClassDescriptor.model_validate(c.model_dump()) for c in img_recognizer.output_classes]
+            output_config = RecognizerOutput(classes=descriptors)
+            export_dir.joinpath(output_file_name).write_text(output_config.model_dump_json(indent=2), encoding="utf-8")
+
+            dict_value: dict[str, Any] = {
+                "min_probability": img_recognizer.min_probability,
+                "max_results": img_recognizer.max_results,
+                "path": f'{export_dir.name}/{file.name}',
+                "output_config_path": f'{export_dir.name}/{output_file_name}'
+            }
+
+            preprocessing_configs = img_recognizer.preprocessing_configs
+            if preprocessing_configs and len(preprocessing_configs) != 0:
+                dict_value["preprocessing"] = [self.get_preprocessing_configuration(c) for c in preprocessing_configs]
+
+            return ImageRecognizerConfiguration.model_validate(dict_value)
+        else:
+            raise InvalidArgumentError(f'LLM type {type(doc_recognizer)} is not supported.')
+
+    async def create_new(self, body):
+        return await create_document(self.get_recognizer_type(body), self._collection_name)
+
+    async def update_model_by_id(self, recognizer_id, model):
+        not_found_msg = f'Cannot update recognizer with id {recognizer_id}. Because no recognizer found.'
+        await update_by_id(recognizer_id, model, self._collection_name, not_found_msg)
+
+    async def delete_model_by_id(self, recognizer_id: str) -> None:
+        await delete_by_id(recognizer_id, self._collection_name)

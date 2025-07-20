@@ -12,3 +12,6 @@ class GoogleGenAIChatModel(BaseGoogleGenAIChatModel):
 class OllamaChatModel(BaseOllamaChatModel):
     id: PyObjectId | None = Field(alias="_id", exclude=True, default=None)
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
+
+
+ChatModel = GoogleGenAIChatModel | OllamaChatModel

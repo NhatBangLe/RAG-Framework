@@ -13,3 +13,6 @@ class BM25Retriever(BaseBM25Retriever):
 class ChromaRetriever(BaseChromaRetriever):
     id: PyObjectId | None = Field(alias="_id", exclude=True, default=None)
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
+
+
+Retriever = BM25Retriever | ChromaRetriever

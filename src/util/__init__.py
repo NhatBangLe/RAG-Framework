@@ -12,9 +12,6 @@ from pymongo.asynchronous.collection import AsyncCollection
 
 from src.util.constant import DEFAULT_CHARSET, DEFAULT_TOKEN_SEPARATOR
 
-__all__ = ['error', 'FileInformation', "SecureDownloadGenerator", "Progress", "constant", "function", "PagingParams",
-           "PagingWrapper"]
-
 
 class FileInformation(TypedDict):
     """File information dictionary"""
@@ -114,7 +111,7 @@ class PagingWrapper[T](BaseModel):
     """
     The `PagingWrapper` class provides a standardized structure for encapsulating
     paginated results from an API or database query. It inherits from `BaseModel`
-    for data validation and serialization, and uses `Generic[T]` to allow for
+    for data validation and serialization and uses `Generic[T]` to allow for
     flexible content types.
     """
 

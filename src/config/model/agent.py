@@ -2,7 +2,6 @@ from pydantic import field_validator
 
 from src.config.model import Configuration
 from src.config.model.chat_model import LLMConfiguration
-from src.config.model.embeddings import EmbeddingsConfiguration
 from src.config.model.mcp import MCPConfiguration
 from src.config.model.prompt import PromptConfiguration
 from src.config.model.recognizer.image import ImageRecognizerConfiguration
@@ -21,7 +20,6 @@ class AgentConfiguration(Configuration):
     language: str
     image_recognizer: ImageRecognizerConfiguration | None = None
     retrievers: list[RetrieverConfiguration] | None = None
-    embeddings: list[EmbeddingsConfiguration] | None = None
     tools: list[ToolConfiguration] | None = None
     mcp: MCPConfiguration | None = None
     llm: LLMConfiguration

@@ -2,6 +2,7 @@ from enum import Enum
 
 from pydantic import Field, field_validator, BaseModel
 
+from ...config.model.data import ExternalDocument
 from ...config.model.retriever.bm25 import BM25Configuration
 from ...config.model.retriever.vector_store.chroma import ChromaVSConfiguration
 
@@ -35,10 +36,18 @@ class BaseBM25Retriever(BaseRetriever, BM25Configuration):
     removal_words_path: str | None = Field(default=None, exclude=True)
 
 
-class BaseChromaRetriever(BaseRetriever, ChromaVSConfiguration):
+class VectorStoreExternalDocument(ExternalDocument):
+    pass
+
+
+class BaseVectorStoreRetriever(BaseRetriever):
+    external_data: list[VectorStoreExternalDocument] | None = Field(
+        default=None,
+        description="External data which documents had been embedded in vector store before.")
+
+
+class BaseChromaRetriever(BaseVectorStoreRetriever, ChromaVSConfiguration):
     type: RetrieverType = RetrieverType.CHROMA_DB
-    external_data_file_id: str | None = Field(default=None,
-                                              description="ID of a file which provides external data.")
     embeddings_id: str = Field(description="ID of the configured embeddings model.")
 
     # Exclude fields

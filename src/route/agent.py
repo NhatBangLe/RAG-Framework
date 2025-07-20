@@ -1,19 +1,10 @@
-import shutil
-from pathlib import Path
 from typing import Annotated
 
-import jsonpickle
 from fastapi import APIRouter, status, Body
 
-from ..config.model.agent import AgentConfiguration
-from ..data.base_model import BaseAgent
-from ..data.database import get_collection, MongoCollection, get_by_id, update_by_id, create_document, delete_by_id
 from ..data.dto.agent import AgentCreate, AgentUpdate, AgentPublic
-from ..data.model import Agent
-from ..dependency import DownloadGeneratorDep, PagingQuery
-from ..util import SecureDownloadGenerator, FileInformation, PagingWrapper
-from ..util.error import NotFoundError
-from ..util.function import zip_folder, get_cache_dir_path, get_datetime_now
+from ..dependency import DownloadGeneratorDep, PagingQuery, AgentServiceDepend
+from ..util import PagingWrapper
 
 router = APIRouter(
     prefix="/api/v1/agent",
@@ -58,64 +49,12 @@ AgentUpdateBody = Annotated[AgentUpdate, Body(
 )]
 
 
-async def get_document(model_id: str):
-    not_found_msg = f'No agent configuration with id {model_id} found.'
-    return await get_by_id(model_id, MongoCollection.AGENT, not_found_msg)
-
-
-async def update_document(model_id: str, model: BaseAgent):
-    not_found_msg = f'Cannot update agent configuration with id {model_id}. Because no entity found.'
-    await update_by_id(model_id, model, MongoCollection.AGENT, not_found_msg)
-
-
-async def export_agent_config(agent_id: str, generator: SecureDownloadGenerator):
-    collection = get_collection(MongoCollection.AGENT)
-    doc_agent = await collection.find_one({"_id": agent_id})
-    if doc_agent is None:
-        raise NotFoundError(f"Agent with id {agent_id} not found.")
-    agent = Agent.model_validate(doc_agent)
-
-    # Prepare for exporting
-    cache_dir = Path(get_cache_dir_path())
-    current_datetime = get_datetime_now()
-    folder_for_exporting = cache_dir.joinpath(agent.id)
-    file_ext = ".zip"
-    exported_file = folder_for_exporting.with_name(f'{folder_for_exporting.name}{file_ext}')
-    file_info: FileInformation = {
-        "name": f'{folder_for_exporting.name}_{current_datetime.strftime("%d-%m-%Y_%H-%M-%S")}{file_ext}',
-        "path": exported_file.absolute().resolve(),
-        "mime_type": "application/zip"
-    }
-    cache_dir.mkdir(exist_ok=True)
-    # Clear old folder and files
-    if folder_for_exporting.is_dir():
-        shutil.rmtree(str(folder_for_exporting.absolute().resolve()))
-    if exported_file.is_file():
-        exported_file.unlink(missing_ok=True)
-    folder_for_exporting.mkdir()
-
-    # Make the necessary directories
-    config_dir = folder_for_exporting.joinpath("config")
-    recognizer_dir = config_dir.joinpath("recognizer")
-    retriever_dir = config_dir.joinpath("retriever")
-    recognizer_dir.mkdir(parents=True)  # also make the parent config folder
-    retriever_dir.mkdir()
-
-    encoding = "utf-8"
-    # Write a config.json file
-    config_obj = AgentConfiguration.model_validate(agent)
-    config_dir.joinpath("config.json").write_text(jsonpickle.encode(config_obj, indent=2), encoding=encoding)
-
-    zip_folder(folder_for_exporting, exported_file)
-    return generator.generate_token(file_info)
-
-
 @router.get(
     path="/{agent_id}/export",
     description="Export Agent configuration file. Get a token to download the file.",
     status_code=status.HTTP_200_OK)
-async def export_config(agent_id: str, generator: DownloadGeneratorDep) -> str:
-    return await export_agent_config(agent_id, generator)
+async def export_config(agent_id: str, generator: DownloadGeneratorDep, service: AgentServiceDepend) -> str:
+    return await service.get_exported_agent_config_file_token(agent_id, generator)
 
 
 @router.get(
@@ -123,9 +62,8 @@ async def export_config(agent_id: str, generator: DownloadGeneratorDep) -> str:
     description="Get all agent configuration entities. Check chat model data response at corresponding endpoints.",
     response_model=PagingWrapper[AgentPublic],
     status_code=status.HTTP_200_OK)
-async def get_all_models(params: PagingQuery):
-    collection = get_collection(MongoCollection.AGENT)
-    return await PagingWrapper.get_paging(params, collection)
+async def get_all_models(params: PagingQuery, service: AgentServiceDepend):
+    return await service.get_all_models_with_paging(params)
 
 
 @router.get(
@@ -133,29 +71,29 @@ async def get_all_models(params: PagingQuery):
     response_model=AgentPublic,
     description="Get an agent configuration.",
     status_code=status.HTTP_200_OK)
-async def get_agent_configuration(agent_id: str):
-    return await get_document(agent_id)
+async def get_agent_configuration(agent_id: str, service: AgentServiceDepend):
+    return await service.get_model_by_id(agent_id)
 
 
 @router.post(
     path="/create",
     description="Create an agent configuration. Returns an ID of the created agent configuration.",
     status_code=status.HTTP_201_CREATED)
-async def create_agent_configuration(body: AgentCreateBody) -> str:
-    return await create_document(body, MongoCollection.AGENT)
+async def create_agent_configuration(body: AgentCreateBody, service: AgentServiceDepend) -> str:
+    return await service.create_new(body)
 
 
 @router.put(
     path="/{model_id}/update",
     description="Update an agent configuration.",
     status_code=status.HTTP_204_NO_CONTENT)
-async def update_agent_configuration(model_id: str, body: AgentUpdateBody) -> None:
-    await update_document(model_id, body)
+async def update_agent_configuration(model_id: str, body: AgentUpdateBody, service: AgentServiceDepend) -> None:
+    await service.update_model_by_id(model_id, body)
 
 
 @router.delete(
     path="/{model_id}",
     description="Delete an agent configuration.",
     status_code=status.HTTP_204_NO_CONTENT)
-async def delete_agent_configuration(model_id: str) -> None:
-    await delete_by_id(model_id, MongoCollection.AGENT)
+async def delete_agent_configuration(model_id: str, service: AgentServiceDepend) -> None:
+    await service.delete_model_by_id(model_id)

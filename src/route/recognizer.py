@@ -2,24 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, status, Body
 
-from ..data.base_model.recognizer import BaseRecognizer
-from ..data.database import get_collection, MongoCollection, get_by_id, delete_by_id, update_by_id, create_document
 from ..data.dto.recognizer import RecognizerPublic, RecognizerCreate, \
     RecognizerUpdate
-from ..data.model.recognizer import ImageRecognizer
-from ..dependency import PagingQuery
+from ..dependency import PagingQuery, RecognizerServiceDepend
 from ..util import PagingWrapper
-
-
-async def get_document(recognizer_id: str):
-    not_found_msg = f'No recognizer with id {recognizer_id} found.'
-    return await get_by_id(recognizer_id, MongoCollection.RECOGNIZER, not_found_msg)
-
-
-async def update_document(recognizer_id: str, model: BaseRecognizer):
-    not_found_msg = f'Cannot update recognizer with id {recognizer_id}. Because no recognizer found.'
-    await update_by_id(recognizer_id, model, MongoCollection.RECOGNIZER, not_found_msg)
-
 
 router = APIRouter(
     prefix="/api/v1/recognizer",
@@ -134,9 +120,8 @@ RecognizerUpdateBody = Annotated[RecognizerUpdate, Body(
     response_model=PagingWrapper,
     description="Get all recognizers.",
     status_code=status.HTTP_200_OK)
-async def get_all(params: PagingQuery):
-    collection = get_collection(MongoCollection.RECOGNIZER)
-    return await PagingWrapper.get_paging(params, collection)
+async def get_all(params: PagingQuery, service: RecognizerServiceDepend):
+    return await service.get_all_models_with_paging(params)
 
 
 @router.get(
@@ -144,30 +129,29 @@ async def get_all(params: PagingQuery):
     response_model=RecognizerPublic,
     description="Get a recognizer by its ID.",
     status_code=status.HTTP_200_OK)
-async def get_recognizer(recognizer_id: str):
-    return await get_document(recognizer_id)
+async def get_recognizer(recognizer_id: str, service: RecognizerServiceDepend):
+    return await service.get_model_by_id(recognizer_id)
 
 
 @router.post(
     path="/create",
     description="Create a recognizer.",
     status_code=status.HTTP_200_OK)
-async def create_recognizer(body: RecognizerCreateBody) -> str:
-    model = ImageRecognizer.model_validate(body.model_dump())
-    return await create_document(model, MongoCollection.RECOGNIZER)
+async def create_recognizer(body: RecognizerCreateBody, service: RecognizerServiceDepend) -> str:
+    return await service.create_new(body)
 
 
 @router.put(
     path="/{recognizer_id}/update",
     description="Update a recognizer.",
     status_code=status.HTTP_204_NO_CONTENT)
-async def update_recognizer(recognizer_id: str, body: RecognizerUpdateBody) -> None:
-    await update_document(recognizer_id, body)
+async def update_recognizer(recognizer_id: str, body: RecognizerUpdateBody, service: RecognizerServiceDepend) -> None:
+    await service.update_model_by_id(recognizer_id, body)
 
 
 @router.delete(
     path="/{recognizer_id}",
     description="Delete a recognizer.",
     status_code=status.HTTP_204_NO_CONTENT)
-async def delete_recognizer(recognizer_id: str) -> None:
-    await delete_by_id(recognizer_id, MongoCollection.RECOGNIZER)
+async def delete_recognizer(recognizer_id: str, service: RecognizerServiceDepend) -> None:
+    await service.delete_model_by_id(recognizer_id)

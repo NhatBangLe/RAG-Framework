@@ -3,9 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, status, Body
 
 from ..data.dto.mcp import MCPCreate, MCPUpdate, MCPPublic
-from ..data.function.mcp import get_mcp_as_document, update_mcp_as_document, delete_mcp_by_id, \
-    get_all_mcp_entities_as_documents, create_mcp_as_document
-from ..dependency import PagingQuery
+from ..dependency import PagingQuery, MCPServiceDepend
 from ..util import PagingWrapper
 
 router = APIRouter(
@@ -71,8 +69,8 @@ MCPUpdateBody = Annotated[MCPUpdate, Body(
     description="Get MCP entities.",
     response_model=PagingWrapper[MCPPublic],
     status_code=status.HTTP_200_OK)
-async def get_all_mcp_configs(params: PagingQuery):
-    return await get_all_mcp_entities_as_documents(params)
+async def get_all_mcp_configs(params: PagingQuery, service: MCPServiceDepend):
+    return await service.get_all_models_with_paging(params)
 
 
 @router.get(
@@ -80,29 +78,29 @@ async def get_all_mcp_configs(params: PagingQuery):
     response_model=MCPPublic,
     description="Get a MCP configuration.",
     status_code=status.HTTP_200_OK)
-async def get_mcp_configuration(model_id: str):
-    return await get_mcp_as_document(model_id)
+async def get_mcp_configuration(model_id: str, service: MCPServiceDepend):
+    return await service.get_model_by_id(model_id)
 
 
 @router.post(
     path="/create",
     description="Create a MCP configuration. Returns an ID of the created MCP configuration.",
     status_code=status.HTTP_201_CREATED)
-async def create_mcp_configuration(body: MCPCreateBody) -> str:
-    return await create_mcp_as_document(body)
+async def create_mcp_configuration(body: MCPCreateBody, service: MCPServiceDepend) -> str:
+    return await service.create_new(body)
 
 
 @router.put(
     path="/{model_id}/update",
     description="Update a MCP configuration.",
     status_code=status.HTTP_204_NO_CONTENT)
-async def update_mcp_configuration(model_id: str, body: MCPUpdateBody) -> None:
-    await update_mcp_as_document(model_id, body)
+async def update_mcp_configuration(model_id: str, body: MCPUpdateBody, service: MCPServiceDepend) -> None:
+    await service.update_model_by_id(model_id, body)
 
 
 @router.delete(
     path="/{model_id}",
     description="Delete a MCP configuration.",
     status_code=status.HTTP_204_NO_CONTENT)
-async def delete_mcp_configuration(model_id: str) -> None:
-    await delete_mcp_by_id(model_id)
+async def delete_mcp_configuration(model_id: str, service: MCPServiceDepend) -> None:
+    await service.delete_model_by_id(model_id)

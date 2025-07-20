@@ -1,39 +1,127 @@
+from abc import ABC, abstractmethod
+
 from ..database import get_by_id, MongoCollection, update_by_id, delete_by_id, get_collection, create_document
-from ..dto.mcp import MCPUpdate, MCPPublic, MCPCreate
+from ..dto.mcp import MCPUpdate, MCPCreate
 from ..model import MCP
 from ...config.model.mcp import MCPConfiguration, MCPConnectionConfiguration
 from ...util import PagingWrapper, PagingParams
 
 
-async def get_all_mcp_entities_as_documents(params: PagingParams) -> PagingWrapper[MCPPublic]:
-    collection = get_collection(MongoCollection.PROMPT)
-    return await PagingWrapper.get_paging(params, collection)
+class IMCPService(ABC):
+
+    @abstractmethod
+    async def get_all_models_with_paging(self, params: PagingParams) -> PagingWrapper[MCP]:
+        """
+        Retrieves all MCP configurations with pagination.
+
+        Args:
+            params: Pagination parameters.
+
+        Returns:
+            A PagingWrapper containing a list of MCPPublic objects.
+        """
+        pass
+
+    @abstractmethod
+    async def get_model_by_id(self, model_id: str) -> MCP:
+        """
+        Retrieves an MCP configuration document by its ID.
+
+        Args:
+            model_id: The unique identifier of the MCP configuration.
+
+        Returns:
+            An MCP object representing the configuration.
+
+        Raises:
+            NotFoundError: If no MCP configuration with the given ID is found.
+        """
+        pass
+
+    @abstractmethod
+    async def get_configuration_by_id(self, model_id: str) -> MCPConfiguration:
+        """
+        Retrieves an MCP configuration by its ID and transforms it into a
+        structured MCPConfiguration object with connections.
+
+        Args:
+            model_id: The unique identifier of the MCP configuration.
+
+        Returns:
+            An MCPConfiguration object.
+
+        Raises:
+            NotFoundError: If no MCP configuration with the given ID is found.
+            ValidationError: If the document cannot be validated into an MCPConfiguration.
+        """
+        pass
+
+    @abstractmethod
+    async def create_new(self, data: MCPCreate) -> str:
+        """
+        Creates a new MCP configuration.
+
+        Args:
+            data: The data for creating the new MCP configuration.
+
+        Returns:
+            The ID of the newly created MCP document.
+        """
+        pass
+
+    @abstractmethod
+    async def update_model_by_id(self, model_id: str, data: MCPUpdate) -> None:
+        """
+        Updates an existing MCP configuration by its ID.
+
+        Args:
+            model_id: The unique identifier of the MCP configuration to update.
+            data: The updated data for the MCP configuration.
+
+        Raises:
+            NotFoundError: If no MCP configuration with the given ID is found.
+        """
+        pass
+
+    @abstractmethod
+    async def delete_model_by_id(self, model_id: str) -> None:
+        """
+        Deletes an MCP configuration by its ID.
+
+        Args:
+            model_id: The unique identifier of the MCP configuration to delete.
+
+        Raises:
+            NotFoundError: If no MCP configuration with the given ID is found.
+        """
+        pass
 
 
-async def get_mcp_as_document(model_id: str):
-    not_found_msg = f'No MCP configuration with id {model_id} found.'
-    return await get_by_id(model_id, MongoCollection.MCP, not_found_msg)
+class MCPServiceImpl(IMCPService):
+    def __init__(self):
+        self._collection_name = MongoCollection.MCP
 
+    async def get_all_models_with_paging(self, params):
+        collection = get_collection(self._collection_name)
+        return await PagingWrapper.get_paging(params, collection)
 
-async def get_mcp_as_configuration(mcp_id: str) -> MCPConfiguration:
-    doc_mcp = await get_mcp_as_document(mcp_id)
-    mcp = MCP.model_validate(doc_mcp)
-    connections: dict[str, MCPConnectionConfiguration] = {}
-    for server in mcp.servers:
-        connections[server.name] = MCPConnectionConfiguration.model_validate(server.model_dump())
-    return MCPConfiguration.model_validate({connections})
+    async def get_model_by_id(self, model_id):
+        not_found_msg = f'No MCP configuration with id {model_id} found.'
+        return await get_by_id(model_id, self._collection_name, not_found_msg)
 
+    async def get_configuration_by_id(self, model_id):
+        doc_mcp = await self.get_model_by_id(model_id)
+        connections: dict[str, MCPConnectionConfiguration] = {}
+        for server in doc_mcp.servers:
+            connections[server.name] = MCPConnectionConfiguration.model_validate(server.model_dump())
+        return MCPConfiguration.model_validate({connections})
 
-async def create_mcp_as_document(data: MCPCreate):
-    model = MCP.model_validate(data.model_dump())
-    return await create_document(model, MongoCollection.MCP)
+    async def create_new(self, data):
+        return await create_document(data, self._collection_name)
 
+    async def update_model_by_id(self, model_id, data):
+        not_found_msg = f'Cannot update MCP configuration with id {model_id}. Because no MCP configuration found.'
+        await update_by_id(model_id, data, self._collection_name, not_found_msg)
 
-async def update_mcp_as_document(model_id: str, data: MCPUpdate):
-    not_found_msg = f'Cannot update MCP configuration with id {model_id}. Because no MCP configuration found.'
-    model = MCP.model_validate(data.model_dump())
-    await update_by_id(model_id, model, MongoCollection.MCP, not_found_msg)
-
-
-async def delete_mcp_by_id(mcp_id: str):
-    await delete_by_id(mcp_id, MongoCollection.MCP)
+    async def delete_model_by_id(self, model_id):
+        await delete_by_id(model_id, self._collection_name)

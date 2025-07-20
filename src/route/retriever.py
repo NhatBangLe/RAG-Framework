@@ -2,33 +2,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, status, Body
 
-from ..data.base_model.retriever import BaseRetriever, RetrieverType
-from ..data.database import get_collection, MongoCollection, update_by_id, get_by_id, delete_by_id, create_document
 from ..data.dto.retriever import RetrieverCreate, RetrieverUpdate, RetrieverPublic
-from ..data.model.retriever import BM25Retriever, ChromaRetriever
-from ..dependency import PagingQuery
+from ..dependency import PagingQuery, RetrieverServiceDepend
 from ..util import PagingWrapper
-from ..util.error import InvalidArgumentError
-
-
-async def get_document(retriever_id: str):
-    not_found_msg = f'No retriever with id {retriever_id} found.'
-    return await get_by_id(retriever_id, MongoCollection.RETRIEVER, not_found_msg)
-
-
-def get_model(base_retriever: BaseRetriever):
-    if base_retriever.type == RetrieverType.BM25:
-        return BM25Retriever.model_validate(base_retriever.model_dump())
-    elif base_retriever.type == RetrieverType.CHROMA_DB:
-        return ChromaRetriever.model_validate(base_retriever.model_dump())
-    else:
-        raise InvalidArgumentError(f'Retriever type {base_retriever.type} is not supported.')
-
-
-async def update_document(retriever_id: str, data: BaseRetriever):
-    not_found_msg = f'Cannot update retriever with id {retriever_id}. Because no retriever found.'
-    await update_by_id(retriever_id, data, MongoCollection.RETRIEVER, not_found_msg)
-
 
 router = APIRouter(
     prefix="/api/v1/retriever",
@@ -102,9 +78,8 @@ RetrieverUpdateBody = Annotated[RetrieverUpdate, Body(
     response_model=PagingWrapper,
     description="Get all retrievers.",
     status_code=status.HTTP_200_OK)
-async def get_all(params: PagingQuery):
-    collection = get_collection(MongoCollection.RETRIEVER)
-    return await PagingWrapper.get_paging(params, collection)
+async def get_all(params: PagingQuery, service: RetrieverServiceDepend):
+    return await service.get_all_models_with_paging(params)
 
 
 @router.get(
@@ -112,29 +87,29 @@ async def get_all(params: PagingQuery):
     response_model=RetrieverPublic,
     description="Get a retriever by its ID.",
     status_code=status.HTTP_200_OK)
-async def get_retriever(retriever_id: str):
-    return await get_document(retriever_id)
+async def get_retriever(retriever_id: str, service: RetrieverServiceDepend):
+    return await service.get_model_by_id(retriever_id)
 
 
 @router.post(
     path="/create",
     description="Create a retriever. Returns an ID of the created retriever.",
     status_code=status.HTTP_200_OK)
-async def create_retriever(body: RetrieverCreateBody) -> str:
-    return await create_document(get_model(body), MongoCollection.RETRIEVER)
+async def create_retriever(body: RetrieverCreateBody, service: RetrieverServiceDepend) -> str:
+    return await service.create_new(body)
 
 
 @router.put(
     path="/{retriever_id}/update",
     description="Update a retriever.",
     status_code=status.HTTP_204_NO_CONTENT)
-async def update_retriever(retriever_id: str, body: RetrieverUpdateBody) -> None:
-    await update_document(retriever_id, body)
+async def update_retriever(retriever_id: str, body: RetrieverUpdateBody, service: RetrieverServiceDepend) -> None:
+    await service.update_model_by_id(retriever_id, body)
 
 
 @router.delete(
     path="/{retriever_id}",
     description="Delete a retriever.",
     status_code=status.HTTP_204_NO_CONTENT)
-async def delete_retriever(retriever_id: str) -> None:
-    await delete_by_id(retriever_id, MongoCollection.RETRIEVER)
+async def delete_retriever(retriever_id: str, service: RetrieverServiceDepend) -> None:
+    await service.delete_model_by_id(retriever_id)

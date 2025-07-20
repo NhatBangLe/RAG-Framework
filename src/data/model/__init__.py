@@ -20,5 +20,5 @@ class MCP(BaseMCP):
 
 
 class File(BaseFile):
-    id: PyObjectId | None = Field(alias="_id", exclude=True, default=None)
+    id: PyObjectId | None = Field(alias="_id", default=None)
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
