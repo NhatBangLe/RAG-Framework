@@ -7,6 +7,8 @@ from ..dto.embeddings import EmbeddingsCreate, EmbeddingsUpdate, EmbeddingsPubli
     HuggingFaceEmbeddingsPublic
 from ..model.embeddings import GoogleGenAIEmbeddings, HuggingFaceEmbeddings, Embeddings
 from ...config.model.embeddings import EmbeddingsConfiguration
+from ...config.model.embeddings.google_genai import GoogleGenAIEmbeddingsConfiguration
+from ...config.model.embeddings.hugging_face import HuggingFaceEmbeddingsConfiguration
 from ...util import PagingWrapper, PagingParams
 from ...util.error import InvalidArgumentError
 
@@ -144,10 +146,18 @@ class EmbeddingsServiceImpl(IEmbeddingsService):
 
     async def get_model_by_id(self, model_id):
         not_found_msg = f'No embeddings model with id {model_id} found.'
-        return await get_by_id(model_id, self._collection_name, not_found_msg)
+        doc = await get_by_id(model_id, self._collection_name, not_found_msg)
+        return self.convert_dict_to_model(doc)
 
     async def get_configuration_by_id(self, model_id) -> EmbeddingsConfiguration:
-        pass
+        embeddings = await self.get_model_by_id(model_id)
+        dict_value = embeddings.model_dump()
+        if embeddings.type == EmbeddingsType.GOOGLE_GENAI:
+            return GoogleGenAIEmbeddingsConfiguration.model_validate(dict_value)
+        elif embeddings.type == EmbeddingsType.HUGGING_FACE:
+            return HuggingFaceEmbeddingsConfiguration.model_validate(dict_value)
+        else:
+            raise InvalidArgumentError(f'Embeddings type {embeddings.type} is not supported.')
 
     @staticmethod
     def convert_base_to_model(base_data):

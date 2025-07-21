@@ -157,7 +157,8 @@ class RetrieverServiceImpl(IRetrieverService):
 
     async def get_model_by_id(self, model_id):
         not_found_msg = f'No retriever with id {model_id} found.'
-        return await get_by_id(model_id, self._collection_name, not_found_msg)
+        doc = await get_by_id(model_id, self._collection_name, not_found_msg)
+        return self.convert_dict_to_model(doc)
 
     async def get_configuration_by_id(self, model_id, export_dir):
         doc_retriever = await self.get_model_by_id(model_id)
@@ -171,28 +172,18 @@ class RetrieverServiceImpl(IRetrieverService):
             raise InvalidArgumentError(f'Retriever type {doc_retriever.type} is not supported.')
 
     async def _get_bm25_configuration(self, retriever: BM25Retriever, export_dir: str | PathLike[str]):
-        # Copy a file contains removal words to export_dir
-        removal_words_file = await self._file_service.get_file_by_id(retriever.removal_word_file_id)
-        export_dir = Path(export_dir)
-        export_dir.mkdir(parents=True, exist_ok=True)
-        file_data = Path(removal_words_file.path).read_bytes()
-        export_dir.joinpath(removal_words_file.name).write_bytes(file_data)
-
-        # dict_value: dict[str, Any] = {
-        #     "name": retriever.name,
-        #     "weight": retriever.weight,
-        #     "embeddings_model": embeddings_doc.name,
-        #     "k": retriever.k,
-        #     "enable_remove_emoji": retriever.enable_remove_emoji,
-        #     "enable_remove_emoticon": retriever.enable_remove_emoticon,
-        #     "removal_words_path": f'{export_dir.name}/{removal_words_file.name}',
-        # }
         dict_value = retriever.model_dump()
         dict_value["embeddings_model"] = await self._embeddings_service.get_configuration_by_id(retriever.embeddings_id)
-        dict_value["removal_words_path"] = f'{export_dir.name}/{removal_words_file.name}'
-        del dict_value["type"]
-        del dict_value["embeddings_id"]
-        del dict_value["removal_words_file_id"]
+
+        # Copy a file contains removal words to export_dir
+        removal_words_file_id = retriever.removal_words_file_id
+        if removal_words_file_id:
+            removal_words_file = await self._file_service.get_file_by_id(removal_words_file_id)
+            export_dir = Path(export_dir)
+            export_dir.mkdir(parents=True, exist_ok=True)
+            file_data = Path(removal_words_file.path).read_bytes()
+            export_dir.joinpath(removal_words_file.name).write_bytes(file_data)
+            dict_value["removal_words_path"] = f'{export_dir.name}/{removal_words_file.name}'
 
         return BM25Configuration.model_validate(dict_value)
 

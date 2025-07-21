@@ -25,7 +25,7 @@ RetrieverCreateBody = Annotated[RetrieverCreate, Body(
             "k": 4,
             "enable_remove_emoji": False,
             "enable_remove_remove_emoticon": False,
-            "removal_words_file_id": None
+            "removal_words_file_id": "686003f271e4995bcb0c2d0f"
         },
         {
             "type": "chroma_db",

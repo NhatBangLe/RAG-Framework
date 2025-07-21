@@ -16,7 +16,7 @@ router = APIRouter(
 )
 
 AgentCreateBody = Annotated[AgentCreate, Body(
-    example={
+    examples=[{
         "name": "Another Example Agent",
         "description": "An example agent to illustrate required fields.",
         "language": "vi",
@@ -26,10 +26,10 @@ AgentCreateBody = Annotated[AgentCreate, Body(
         "mcp_id": None,
         "llm_id": "686003f271e4995bcb0c2d0a",
         "prompt_id": "686003f271e4995bcb0c2e0f"
-    }
+    }]
 )]
 AgentUpdateBody = Annotated[AgentUpdate, Body(
-    example={
+    examples=[{
         "name": "Updated Agent",
         "description": "An agent with updated information and additional tools.",
         "language": "en",
@@ -45,7 +45,7 @@ AgentUpdateBody = Annotated[AgentUpdate, Body(
         "mcp_id": "686003f271e4995bcb0c2d0b",
         "llm_id": "686003f271e4995bcb0c2d0a",
         "prompt_id": "686003f271e4995bcb0c2e0f"
-    }
+    }]
 )]
 
 

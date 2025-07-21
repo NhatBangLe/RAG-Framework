@@ -144,7 +144,8 @@ class ChatModelServiceImpl(IChatModelService):
 
     async def get_model_by_id(self, model_id):
         not_found_msg = f'No chat model with id {model_id} found.'
-        return await get_by_id(model_id, self._collection_name, not_found_msg)
+        doc = await get_by_id(model_id, self._collection_name, not_found_msg)
+        return self.convert_dict_to_model(doc)
 
     @staticmethod
     def convert_base_to_model(base_data):
@@ -177,13 +178,14 @@ class ChatModelServiceImpl(IChatModelService):
             raise ValueError(f"Unsupported chat model type: {type(data)}")
 
     async def get_configuration_by_id(self, model_id):
-        doc_chat_model = await self.get_model_by_id(model_id)
-        if doc_chat_model.type == ChatModelType.GOOGLE_GENAI:
-            return GoogleGenAILLMConfiguration.model_validate(doc_chat_model)
-        elif doc_chat_model.type == ChatModelType.OLLAMA:
-            return OllamaLLMConfiguration.model_validate(doc_chat_model)
+        chat_model = await self.get_model_by_id(model_id)
+        dict_value = chat_model.model_dump()
+        if chat_model.type == ChatModelType.GOOGLE_GENAI:
+            return GoogleGenAILLMConfiguration.model_validate(dict_value)
+        elif chat_model.type == ChatModelType.OLLAMA:
+            return OllamaLLMConfiguration.model_validate(dict_value)
         else:
-            raise InvalidArgumentError(f'LLM type {type(doc_chat_model)} is not supported.')
+            raise InvalidArgumentError(f'LLM type {type(chat_model)} is not supported.')
 
     async def create_new(self, body) -> str:
         return await create_document(self.convert_base_to_model(body), self._collection_name)

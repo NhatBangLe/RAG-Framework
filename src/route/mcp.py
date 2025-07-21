@@ -16,7 +16,7 @@ router = APIRouter(
 )
 
 MCPCreateBody = Annotated[MCPCreate, Body(
-    example={
+    examples=[{
         "servers": [
             {
                 "name": "example_streamable_server",
@@ -38,10 +38,10 @@ MCPCreateBody = Annotated[MCPCreate, Body(
                 "timeout": 90
             }
         ]
-    }
+    }]
 )]
 MCPUpdateBody = Annotated[MCPUpdate, Body(
-    example={
+    examples=[{
         "servers": [
             {
                 "name": "a_streamable_server",
@@ -60,7 +60,7 @@ MCPUpdateBody = Annotated[MCPUpdate, Body(
                 "timeout": 90
             }
         ]
-    }
+    }]
 )]
 
 

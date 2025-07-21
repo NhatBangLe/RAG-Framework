@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import jsonpickle
+from setuptools.compat.py311 import shutil_rmtree
 
 from src.config.model.agent import AgentConfiguration
 from .chat_model import IChatModelService
@@ -181,19 +182,19 @@ class AgentServiceImpl(IAgentService):
 
         root_dir = Path(cache_dir, agent_id)
         if level == "root":
-            root_dir.mkdir(exist_ok=True)
+            root_dir.mkdir(parents=True, exist_ok=True)
             return root_dir
         elif level == "config":
             config_dir = root_dir.joinpath("config")
-            config_dir.mkdir(exist_ok=True)
+            config_dir.mkdir(parents=True, exist_ok=True)
             return config_dir
         elif level == "recognizer":
-            recognizer_dir = root_dir.joinpath("recognizer")
-            recognizer_dir.mkdir(exist_ok=True)
+            recognizer_dir = root_dir.joinpath("config", "recognizer")
+            recognizer_dir.mkdir(parents=True, exist_ok=True)
             return recognizer_dir
         elif level == "retriever":
-            retriever_dir = root_dir.joinpath("retriever")
-            retriever_dir.mkdir(exist_ok=True)
+            retriever_dir = root_dir.joinpath("config", "retriever")
+            retriever_dir.mkdir(parents=True, exist_ok=True)
             return retriever_dir
         else:
             raise ValueError(f"Invalid level: {level}")
@@ -246,18 +247,20 @@ class AgentServiceImpl(IAgentService):
         exported_file = folder_for_exporting.with_name(f'{folder_for_exporting.name}{file_ext}')
         file_info: FileInformation = {
             "name": f'{folder_for_exporting.name}_{get_datetime_now().strftime("%d-%m-%Y_%H-%M-%S")}{file_ext}',
-            "path": exported_file.absolute().resolve(),
+            "path": str(exported_file.absolute().resolve()),
             "mime_type": "application/zip"
         }
         if exported_file.is_file():
             return generator.generate_token(file_info)
 
         # Write a config.json file
-        config_obj = self._get_agent_config(agent)
+        config_obj = await self._get_agent_config(agent)
         config_dir = self.get_export_path(agent.id, "config")
         config_dir.joinpath("config.json").write_text(jsonpickle.encode(config_obj, indent=2), encoding=encoding)
 
         zip_folder(folder_for_exporting, exported_file)
+        shutil_rmtree(folder_for_exporting)  # remove folder after having zipped
+
         return generator.generate_token(file_info)
 
     async def _get_agent_config(self, agent: Agent):

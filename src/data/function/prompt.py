@@ -120,7 +120,8 @@ class PromptServiceImpl(IPromptService):
 
     async def get_model_by_id(self, model_id):
         not_found_msg = f'No prompt configuration with id {model_id} found.'
-        return await get_by_id(model_id, self._collection_name, not_found_msg)
+        doc = await get_by_id(model_id, self._collection_name, not_found_msg)
+        return self.convert_dict_to_model(doc)
 
     async def get_configuration_by_id(self, model_id):
         doc_prompt = await self.get_model_by_id(model_id)

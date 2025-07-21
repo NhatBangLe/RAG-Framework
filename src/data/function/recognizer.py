@@ -170,7 +170,8 @@ class RecognizerServiceImpl(IRecognizerService):
 
     async def get_model_by_id(self, recognizer_id):
         not_found_msg = f'No recognizer with id {recognizer_id} found.'
-        return await get_by_id(recognizer_id, self._collection_name, not_found_msg)
+        doc = await get_by_id(recognizer_id, self._collection_name, not_found_msg)
+        return self.convert_dict_to_model(doc)
 
     @staticmethod
     def get_recognizer_type(base_data: BaseRecognizer):
@@ -197,7 +198,7 @@ class RecognizerServiceImpl(IRecognizerService):
 
     async def get_configuration_by_id(self, recognizer_id, export_dir):
         doc_recognizer = await self.get_model_by_id(recognizer_id)
-        file_id: str = doc_recognizer["model_file_id"]
+        file_id: str = doc_recognizer.model_file_id
         file = await self._file_service.get_file_by_id(file_id)
         export_dir = Path(export_dir)
         export_dir.mkdir(exist_ok=True)
