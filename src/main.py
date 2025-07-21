@@ -4,7 +4,6 @@ import os
 import platform
 from contextlib import asynccontextmanager
 
-import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,14 +12,14 @@ from pymongo import AsyncMongoClient
 from pymongo.server_api import ServerApi
 
 from src.dependency import DownloadGeneratorDep
+from src.route.agent import router as agent_router
 from src.route.chat_model import router as chat_model_router
 from src.route.embeddings import router as embeddings_router
+from src.route.file import router as file_router
 from src.route.mcp import router as mcp_router
 from src.route.prompt import router as prompt_router
 from src.route.recognizer import router as recognizer_router
 from src.route.retriever import router as retriever_router
-from src.route.agent import router as agent_router
-from src.route.file import router as file_router
 from src.util.constant import EnvVar
 from src.util.error import NotFoundError, InvalidArgumentError
 
@@ -121,7 +120,3 @@ async def invalid_argument_exception_handler(request: Request, exc: InvalidArgum
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"message": exc.reason},
     )
-
-
-if __name__ == '__main__':
-    uvicorn.run(app, host="127.0.0.1", port=8000)
