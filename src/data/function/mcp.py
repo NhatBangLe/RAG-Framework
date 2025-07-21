@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 from ..database import get_by_id, MongoCollection, update_by_id, delete_by_id, get_collection, create_document
-from ..dto.mcp import MCPUpdate, MCPCreate
+from ..dto.mcp import MCPUpdate, MCPCreate, MCPPublic
 from ..model import MCP
 from ...config.model.mcp import MCPConfiguration, MCPConnectionConfiguration
 from ...util import PagingWrapper, PagingParams
@@ -10,12 +11,14 @@ from ...util import PagingWrapper, PagingParams
 class IMCPService(ABC):
 
     @abstractmethod
-    async def get_all_models_with_paging(self, params: PagingParams) -> PagingWrapper[MCP]:
+    async def get_all_models_with_paging(self, params: PagingParams,
+                                         to_public: bool) -> PagingWrapper[MCP]:
         """
         Retrieves all MCP configurations with pagination.
 
         Args:
             params: Pagination parameters.
+            to_public: Whether to return public MCP configurations.
 
         Returns:
             A PagingWrapper containing a list of MCPPublic objects.
@@ -54,6 +57,16 @@ class IMCPService(ABC):
             NotFoundError: If no MCP configuration with the given ID is found.
             ValidationError: If the document cannot be validated into an MCPConfiguration.
         """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def convert_dict_to_model(data: dict[str, Any]) -> MCP:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def convert_dict_to_public(data: dict[str, Any]) -> MCPPublic:
         pass
 
     @abstractmethod
@@ -101,9 +114,10 @@ class MCPServiceImpl(IMCPService):
     def __init__(self):
         self._collection_name = MongoCollection.MCP
 
-    async def get_all_models_with_paging(self, params):
+    async def get_all_models_with_paging(self, params, to_public):
         collection = get_collection(self._collection_name)
-        return await PagingWrapper.get_paging(params, collection)
+        map_func = self.convert_dict_to_public if to_public else self.convert_dict_to_model
+        return await PagingWrapper.get_paging(params, collection, map_func)
 
     async def get_model_by_id(self, model_id):
         not_found_msg = f'No MCP configuration with id {model_id} found.'
@@ -115,6 +129,14 @@ class MCPServiceImpl(IMCPService):
         for server in doc_mcp.servers:
             connections[server.name] = MCPConnectionConfiguration.model_validate(server.model_dump())
         return MCPConfiguration.model_validate({connections})
+
+    @staticmethod
+    def convert_dict_to_model(data):
+        return MCP.model_validate(data)
+
+    @staticmethod
+    def convert_dict_to_public(data):
+        return MCPPublic.model_validate(data)
 
     async def create_new(self, data):
         return await create_document(data, self._collection_name)

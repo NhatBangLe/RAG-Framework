@@ -43,7 +43,7 @@ PromptUpdateBody = Annotated[PromptUpdate, Body(
     response_model=PagingWrapper[PromptPublic],
     status_code=status.HTTP_200_OK)
 async def get_all_prompts(params: PagingQuery, service: PromptServiceDepend):
-    return await service.get_all_models_with_paging(params)
+    return await service.get_all_models_with_paging(params, True)
 
 
 @router.get(

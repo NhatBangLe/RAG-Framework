@@ -60,7 +60,7 @@ ChatModelUpdateBody = Annotated[ChatModelUpdate, Body(
     response_model=PagingWrapper,
     status_code=status.HTTP_200_OK)
 async def get_all_models(params: PagingQuery, service: ChatModelServiceDepend):
-    return await service.get_all_models_with_paging(params)
+    return await service.get_all_models_with_paging(params, True)
 
 
 @router.get(

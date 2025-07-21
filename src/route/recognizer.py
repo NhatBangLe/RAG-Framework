@@ -121,7 +121,7 @@ RecognizerUpdateBody = Annotated[RecognizerUpdate, Body(
     description="Get all recognizers.",
     status_code=status.HTTP_200_OK)
 async def get_all(params: PagingQuery, service: RecognizerServiceDepend):
-    return await service.get_all_models_with_paging(params)
+    return await service.get_all_models_with_paging(params, True)
 
 
 @router.get(

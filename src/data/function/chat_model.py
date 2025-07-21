@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 from ..base_model.chat_model import BaseChatModel, ChatModelType
 from ..database import get_by_id, MongoCollection, update_by_id, create_document, delete_by_id, get_collection
-from ..dto.chat_model import ChatModelUpdate, ChatModelCreate
+from ..dto.chat_model import ChatModelUpdate, ChatModelCreate, ChatModelPublic, GoogleGenAIChatModelPublic, \
+    OllamaChatModelPublic
 from ..model.chat_model import GoogleGenAIChatModel, OllamaChatModel, ChatModel
 from ...config.model.chat_model import LLMConfiguration
 from ...config.model.chat_model.google_genai import GoogleGenAILLMConfiguration
@@ -15,12 +17,14 @@ from ...util.error import InvalidArgumentError
 class IChatModelService(ABC):
 
     @abstractmethod
-    async def get_all_models_with_paging(self, params: PagingParams) -> PagingWrapper[ChatModel]:
+    async def get_all_models_with_paging(self, params: PagingParams,
+                                         to_public: bool) -> PagingWrapper[ChatModel | ChatModelPublic]:
         """
         Retrieves all chat models as documents with pagination.
 
         Args:
             params: Pagination parameters.
+            to_public: Whether to return public chat models.
 
         Returns:
             A PagingWrapper containing a list of ChatModel documents.
@@ -45,7 +49,7 @@ class IChatModelService(ABC):
 
     @staticmethod
     @abstractmethod
-    def convert_into_model(base_data: BaseChatModel) -> ChatModel:
+    def convert_base_to_model(base_data: BaseChatModel) -> ChatModel:
         """
         Converts base chat model data into a specific ChatModel instance
         (e.g., GoogleGenAIChatModel, OllamaChatModel) based on its type.
@@ -59,6 +63,16 @@ class IChatModelService(ABC):
         Raises:
             InvalidArgumentError: If the chat model type is not supported.
         """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def convert_dict_to_model(data: dict[str, Any]) -> ChatModel:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def convert_dict_to_public(data: dict[str, Any]) -> ChatModelPublic:
         pass
 
     @abstractmethod
@@ -123,16 +137,17 @@ class ChatModelServiceImpl(IChatModelService):
     def __init__(self):
         self._collection_name = MongoCollection.CHAT_MODEL
 
-    async def get_all_models_with_paging(self, params):
+    async def get_all_models_with_paging(self, params, to_public):
         collection = get_collection(self._collection_name)
-        return await PagingWrapper.get_paging(params, collection)
+        map_func = self.convert_dict_to_public if to_public else self.convert_dict_to_model
+        return await PagingWrapper.get_paging(params, collection, map_func)
 
     async def get_model_by_id(self, model_id):
         not_found_msg = f'No chat model with id {model_id} found.'
         return await get_by_id(model_id, self._collection_name, not_found_msg)
 
     @staticmethod
-    def convert_into_model(base_data):
+    def convert_base_to_model(base_data):
         dict_value = base_data.model_dump()
         if base_data.type == ChatModelType.GOOGLE_GENAI:
             return GoogleGenAIChatModel.model_validate(dict_value)
@@ -140,6 +155,26 @@ class ChatModelServiceImpl(IChatModelService):
             return OllamaChatModel.model_validate(dict_value)
         else:
             raise InvalidArgumentError(f'Chat model type {base_data.type} is not supported.')
+
+    @staticmethod
+    def convert_dict_to_model(data: dict[str, Any]) -> ChatModel:
+        data_type = data["type"]
+        if data_type == ChatModelType.GOOGLE_GENAI.value:
+            return GoogleGenAIChatModel.model_validate(data)
+        elif data_type == ChatModelType.OLLAMA.value:
+            return OllamaChatModel.model_validate(data)
+        else:
+            raise ValueError(f"Unsupported chat model type: {type(data)}")
+
+    @staticmethod
+    def convert_dict_to_public(data: dict[str, Any]) -> ChatModelPublic:
+        data_type = data["type"]
+        if data_type == ChatModelType.GOOGLE_GENAI.value:
+            return GoogleGenAIChatModelPublic.model_validate(data)
+        elif data_type == ChatModelType.OLLAMA.value:
+            return OllamaChatModelPublic.model_validate(data)
+        else:
+            raise ValueError(f"Unsupported chat model type: {type(data)}")
 
     async def get_configuration_by_id(self, model_id):
         doc_chat_model = await self.get_model_by_id(model_id)
@@ -151,7 +186,7 @@ class ChatModelServiceImpl(IChatModelService):
             raise InvalidArgumentError(f'LLM type {type(doc_chat_model)} is not supported.')
 
     async def create_new(self, body) -> str:
-        return await create_document(self.convert_into_model(body), self._collection_name)
+        return await create_document(self.convert_base_to_model(body), self._collection_name)
 
     async def update_model_by_id(self, model_id, model):
         not_found_msg = f'Cannot update chat model with id {model_id}. Because no chat model found.'

@@ -14,7 +14,7 @@ from .prompt import IPromptService
 from .recognizer import IRecognizerService
 from .retriever import IRetrieverService
 from ..database import get_by_id, MongoCollection, update_by_id, create_document, delete_by_id, get_collection
-from ..dto.agent import AgentUpdate, AgentCreate
+from ..dto.agent import AgentUpdate, AgentCreate, AgentPublic
 from ..model import Agent
 from ...config.model.retriever import RetrieverConfiguration
 from ...util import SecureDownloadGenerator, FileInformation, PagingParams, PagingWrapper, DEFAULT_CHARSET
@@ -42,16 +42,28 @@ class IAgentService(ABC):
         pass
 
     @abstractmethod
-    async def get_all_models_with_paging(self, params: PagingParams) -> PagingWrapper[Agent]:
+    async def get_all_models_with_paging(self, params: PagingParams,
+                                         to_public: bool) -> PagingWrapper[Agent | AgentPublic]:
         """
         Retrieves all agent configurations with pagination.
 
         Args:
             params: Pagination parameters.
+            to_public: Whether to return public agent data or not.
 
         Returns:
             A PagingWrapper containing a list of Agent objects.
         """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def convert_dict_to_model(data: dict[str, Any]) -> Agent:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def convert_dict_to_public(data: dict[str, Any]) -> AgentPublic:
         pass
 
     @abstractmethod
@@ -146,6 +158,7 @@ class IAgentService(ABC):
 
 
 class AgentServiceImpl(IAgentService):
+
     def __init__(self,
                  chat_model_service: IChatModelService,
                  mcp_service: IMCPService,
@@ -162,7 +175,7 @@ class AgentServiceImpl(IAgentService):
         self._collection_name = MongoCollection.AGENT
 
     @staticmethod
-    def get_export_path(agent_id: str, level: Literal["root", "config", "recognizer", "retriever"]):
+    def get_export_path(agent_id, level):
         cache_dir = Path(get_cache_dir_path())
         cache_dir.mkdir(exist_ok=True)
 
@@ -185,33 +198,67 @@ class AgentServiceImpl(IAgentService):
         else:
             raise ValueError(f"Invalid level: {level}")
 
-    async def get_all_models_with_paging(self, params: PagingParams) -> PagingWrapper[Agent]:
+    async def get_all_models_with_paging(self, params, to_public):
         collection = get_collection(self._collection_name)
-        return await PagingWrapper.get_paging(params, collection)
+        map_func = self.convert_dict_to_public if to_public else self.convert_dict_to_model
+        return await PagingWrapper.get_paging(params, collection, map_func)
 
-    async def get_model_by_id(self, model_id: str):
+    async def get_model_by_id(self, model_id):
         not_found_msg = f'No agent configuration with id {model_id} found.'
         return await get_by_id(model_id, self._collection_name, not_found_msg)
 
-    async def create_new(self, data: AgentCreate):
+    @staticmethod
+    def convert_dict_to_model(data):
+        return Agent.model_validate(data)
+
+    @staticmethod
+    def convert_dict_to_public(data):
+        return AgentPublic.model_validate(data)
+
+    async def create_new(self, data):
         model = Agent.model_validate(data.model_dump())
         return await create_document(model, self._collection_name)
 
-    async def update_model_by_id(self, model_id: str, data: AgentUpdate):
+    async def update_model_by_id(self, model_id, data):
         model = Agent.model_validate(data.model_dump())
         not_found_msg = f'Cannot update agent configuration with id {model_id}. Because no entity found.'
         await update_by_id(model_id, model, self._collection_name, not_found_msg)
 
-    async def delete_model_by_id(self, agent_id: str):
+    async def delete_model_by_id(self, agent_id):
         await delete_by_id(agent_id, self._collection_name)
 
-    async def invalidate_agent_cache(self, agent_id: str):
+    async def invalidate_agent_cache(self, agent_id):
         doc_agent = await self.get_model_by_id(agent_id)
         agent = Agent.model_validate(doc_agent)
         cache_dir = Path(get_cache_dir_path())
         folder_for_exporting = cache_dir.joinpath(agent.id)
         if folder_for_exporting.is_dir():
             shutil.rmtree(str(folder_for_exporting.absolute().resolve()))
+
+    async def get_exported_agent_config_file_token(self, agent_id, generator):
+        doc_agent = await self.get_model_by_id(agent_id)
+        agent = Agent.model_validate(doc_agent)
+
+        # Prepare for exporting
+        encoding = DEFAULT_CHARSET
+        folder_for_exporting = self.get_export_path(agent.id, "root")
+        file_ext = ".zip"
+        exported_file = folder_for_exporting.with_name(f'{folder_for_exporting.name}{file_ext}')
+        file_info: FileInformation = {
+            "name": f'{folder_for_exporting.name}_{get_datetime_now().strftime("%d-%m-%Y_%H-%M-%S")}{file_ext}',
+            "path": exported_file.absolute().resolve(),
+            "mime_type": "application/zip"
+        }
+        if exported_file.is_file():
+            return generator.generate_token(file_info)
+
+        # Write a config.json file
+        config_obj = self._get_agent_config(agent)
+        config_dir = self.get_export_path(agent.id, "config")
+        config_dir.joinpath("config.json").write_text(jsonpickle.encode(config_obj, indent=2), encoding=encoding)
+
+        zip_folder(folder_for_exporting, exported_file)
+        return generator.generate_token(file_info)
 
     async def _get_agent_config(self, agent: Agent):
         dict_value: dict[str, Any] = {
@@ -258,28 +305,3 @@ class AgentServiceImpl(IAgentService):
             if v is not None:
                 dict_value[k] = v.result()
         return AgentConfiguration.model_validate(dict_value)
-
-    async def get_exported_agent_config_file_token(self, agent_id: str, generator: SecureDownloadGenerator) -> str:
-        doc_agent = await self.get_model_by_id(agent_id)
-        agent = Agent.model_validate(doc_agent)
-
-        # Prepare for exporting
-        encoding = DEFAULT_CHARSET
-        folder_for_exporting = self.get_export_path(agent.id, "root")
-        file_ext = ".zip"
-        exported_file = folder_for_exporting.with_name(f'{folder_for_exporting.name}{file_ext}')
-        file_info: FileInformation = {
-            "name": f'{folder_for_exporting.name}_{get_datetime_now().strftime("%d-%m-%Y_%H-%M-%S")}{file_ext}',
-            "path": exported_file.absolute().resolve(),
-            "mime_type": "application/zip"
-        }
-        if exported_file.is_file():
-            return generator.generate_token(file_info)
-
-        # Write a config.json file
-        config_obj = self._get_agent_config(agent)
-        config_dir = self.get_export_path(agent.id, "config")
-        config_dir.joinpath("config.json").write_text(jsonpickle.encode(config_obj, indent=2), encoding=encoding)
-
-        zip_folder(folder_for_exporting, exported_file)
-        return generator.generate_token(file_info)

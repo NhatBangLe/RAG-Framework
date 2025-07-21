@@ -70,7 +70,7 @@ MCPUpdateBody = Annotated[MCPUpdate, Body(
     response_model=PagingWrapper[MCPPublic],
     status_code=status.HTTP_200_OK)
 async def get_all_mcp_configs(params: PagingQuery, service: MCPServiceDepend):
-    return await service.get_all_models_with_paging(params)
+    return await service.get_all_models_with_paging(params, True)
 
 
 @router.get(

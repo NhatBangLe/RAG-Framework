@@ -79,7 +79,7 @@ RetrieverUpdateBody = Annotated[RetrieverUpdate, Body(
     description="Get all retrievers.",
     status_code=status.HTTP_200_OK)
 async def get_all(params: PagingQuery, service: RetrieverServiceDepend):
-    return await service.get_all_models_with_paging(params)
+    return await service.get_all_models_with_paging(params, True)
 
 
 @router.get(

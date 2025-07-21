@@ -5,7 +5,7 @@ import math
 import secrets
 import time
 from os import PathLike
-from typing import TypedDict, Self, Callable
+from typing import TypedDict, Self, Callable, Any
 
 from pydantic import BaseModel, Field
 from pymongo.asynchronous.collection import AsyncCollection
@@ -129,6 +129,7 @@ class PagingWrapper[T](BaseModel):
             cls,
             params: PagingParams,
             collection: AsyncCollection,
+            map_func: Callable[[dict[str, Any]], T],
             *args
     ):
         total_elements = await collection.count_documents({})
@@ -140,7 +141,7 @@ class PagingWrapper[T](BaseModel):
             if "_id" in record:
                 record["id"] = str(record["_id"])
                 del record["_id"]
-            content.append(record)
+            content.append(map_func(record))
 
         return cls(
             content=content,

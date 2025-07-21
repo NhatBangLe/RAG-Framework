@@ -1,13 +1,14 @@
 from abc import ABC, abstractmethod
 from os import PathLike
 from pathlib import Path
-from typing import cast
+from typing import cast, Any
 
 from .embeddings import IEmbeddingsService
 from .file import IFileService
 from ..base_model.retriever import BaseRetriever, RetrieverType
 from ..database import get_by_id, MongoCollection, update_by_id, delete_by_id, get_collection, create_document
-from ..dto.retriever import RetrieverUpdate, RetrieverCreate
+from ..dto.retriever import RetrieverUpdate, RetrieverCreate, RetrieverPublic, BM25RetrieverPublic, \
+    ChromaRetrieverPublic
 from ..model.retriever import Retriever, BM25Retriever, ChromaRetriever
 from ...config.model.data import ExternalDocumentConfiguration, ExternalDocument
 from ...config.model.retriever import RetrieverConfiguration
@@ -25,15 +26,17 @@ class IRetrieverService(ABC):
     """
 
     @abstractmethod
-    async def get_all_models_with_paging(self, params: PagingParams) -> PagingWrapper[Retriever]:
+    async def get_all_models_with_paging(self, params: PagingParams,
+                                         to_public: bool) -> PagingWrapper[Retriever | RetrieverPublic]:
         """
         Retrieves all retriever models with pagination.
 
         Args:
             params: Pagination parameters.
+            to_public: Whether to convert the models to public format.
 
         Returns:
-            A PagingWrapper containing a list of Retriever models.
+            A PagingWrapper containing a list of models.
         """
         pass
 
@@ -74,7 +77,7 @@ class IRetrieverService(ABC):
 
     @staticmethod
     @abstractmethod
-    def convert_into_model(base_retriever: BaseRetriever) -> Retriever:
+    def convert_base_to_model(base_retriever: BaseRetriever) -> Retriever:
         """
         Converts base retriever data into a specific Retriever model instance
         (e.g., BM25Retriever, ChromaRetriever) based on its type.
@@ -88,6 +91,16 @@ class IRetrieverService(ABC):
         Raises:
             InvalidArgumentError: If the retriever type is not supported.
         """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def convert_dict_to_model(data: dict[str, Any]) -> Retriever:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def convert_dict_to_public(data: dict[str, Any]) -> RetrieverPublic:
         pass
 
     @abstractmethod
@@ -137,9 +150,10 @@ class RetrieverServiceImpl(IRetrieverService):
         self._embeddings_service = embeddings_service
         self._file_service = file_service
 
-    async def get_all_models_with_paging(self, params):
+    async def get_all_models_with_paging(self, params, to_public):
         collection = get_collection(self._collection_name)
-        return await PagingWrapper.get_paging(params, collection)
+        map_func = self.convert_dict_to_public if to_public else self.convert_dict_to_model
+        return await PagingWrapper.get_paging(params, collection, map_func)
 
     async def get_model_by_id(self, model_id):
         not_found_msg = f'No retriever with id {model_id} found.'
@@ -202,7 +216,7 @@ class RetrieverServiceImpl(IRetrieverService):
         return ChromaVSConfiguration.model_validate(dict_value)
 
     @staticmethod
-    def convert_into_model(base_retriever):
+    def convert_base_to_model(base_retriever):
         if base_retriever.type == RetrieverType.BM25:
             return BM25Retriever.model_validate(base_retriever.model_dump())
         elif base_retriever.type == RetrieverType.CHROMA_DB:
@@ -210,8 +224,28 @@ class RetrieverServiceImpl(IRetrieverService):
         else:
             raise InvalidArgumentError(f'Retriever type {base_retriever.type} is not supported.')
 
+    @staticmethod
+    def convert_dict_to_public(data: dict[str, Any]) -> RetrieverPublic:
+        data_type = data["type"]
+        if data_type == RetrieverType.BM25.value:
+            return BM25RetrieverPublic.model_validate(data)
+        elif data_type == RetrieverType.CHROMA_DB.value:
+            return ChromaRetrieverPublic.model_validate(data)
+        else:
+            raise ValueError(f"Unsupported recognizer type: {type(data)}")
+
+    @staticmethod
+    def convert_dict_to_model(data: dict[str, Any]) -> Retriever:
+        data_type = data["type"]
+        if data_type == RetrieverType.BM25.value:
+            return BM25Retriever.model_validate(data)
+        elif data_type == RetrieverType.CHROMA_DB.value:
+            return ChromaRetriever.model_validate(data)
+        else:
+            raise ValueError(f"Unsupported recognizer type: {type(data)}")
+
     async def create_new(self, data):
-        return await create_document(self.convert_into_model(data), self._collection_name)
+        return await create_document(self.convert_base_to_model(data), self._collection_name)
 
     async def update_model_by_id(self, model_id, data):
         not_found_msg = f'Cannot update retriever with id {model_id}. Because no retriever found.'

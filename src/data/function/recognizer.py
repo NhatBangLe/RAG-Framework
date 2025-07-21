@@ -6,7 +6,7 @@ from typing import Any
 from .file import IFileService
 from ..base_model.recognizer import BaseRecognizer, RecognizerType, BaseImagePreprocessing, ImagePreprocessingType
 from ..database import get_by_id, MongoCollection, update_by_id, delete_by_id, get_collection, create_document
-from ..dto.recognizer import RecognizerUpdate, RecognizerCreate
+from ..dto.recognizer import RecognizerUpdate, RecognizerCreate, RecognizerPublic, ImageRecognizerPublic
 from ..model.recognizer import ImageRecognizer, Recognizer
 from ...config.model.recognizer import RecognizerConfiguration, ClassDescriptor, RecognizerOutput
 from ...config.model.recognizer.image import ImageRecognizerConfiguration, ImagePreprocessingConfiguration
@@ -17,18 +17,16 @@ from ...util.error import InvalidArgumentError
 
 
 class IRecognizerService(ABC):
-    """
-    Interface for managing recognizer models, including their configurations and preprocessing.
-    Defines the contract for services that interact with recognizer data and associated files.
-    """
 
     @abstractmethod
-    async def get_all_models_with_paging(self, params: PagingParams) -> PagingWrapper[Recognizer]:
+    async def get_all_models_with_paging(self, params: PagingParams,
+                                         to_public: bool) -> PagingWrapper[Recognizer]:
         """
         Retrieves all recognizer models with pagination.
 
         Args:
             params: Pagination parameters.
+            to_public: Whether to return public recognizer models.
 
         Returns:
             A PagingWrapper containing a list of Recognizer models.
@@ -67,6 +65,16 @@ class IRecognizerService(ABC):
         Raises:
             InvalidArgumentError: If the recognizer type is not supported.
         """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def convert_dict_to_model(data: dict[str, Any]) -> Recognizer:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def convert_dict_to_public(data: dict[str, Any]) -> RecognizerPublic:
         pass
 
     @staticmethod
@@ -155,9 +163,10 @@ class RecognizerServiceImpl(IRecognizerService):
         self._collection_name = MongoCollection.RECOGNIZER
         self._file_service = file_service
 
-    async def get_all_models_with_paging(self, params):
+    async def get_all_models_with_paging(self, params, to_public):
         collection = get_collection(self._collection_name)
-        return await PagingWrapper.get_paging(params, collection)
+        map_func = self.convert_dict_to_public if to_public else self.convert_dict_to_model
+        return await PagingWrapper.get_paging(params, collection, map_func)
 
     async def get_model_by_id(self, recognizer_id):
         not_found_msg = f'No recognizer with id {recognizer_id} found.'
@@ -218,6 +227,22 @@ class RecognizerServiceImpl(IRecognizerService):
             return ImageRecognizerConfiguration.model_validate(dict_value)
         else:
             raise InvalidArgumentError(f'LLM type {type(doc_recognizer)} is not supported.')
+
+    @staticmethod
+    def convert_dict_to_model(data):
+        data_type = data["type"]
+        if data_type == RecognizerType.IMAGE.value:
+            return ImageRecognizer.model_validate(data)
+        else:
+            raise ValueError(f"Unsupported recognizer type: {type(data)}")
+
+    @staticmethod
+    def convert_dict_to_public(data):
+        data_type = data["type"]
+        if data_type == RecognizerType.IMAGE.value:
+            return ImageRecognizerPublic.model_validate(data)
+        else:
+            raise ValueError(f"Unsupported recognizer type: {type(data)}")
 
     async def create_new(self, body):
         return await create_document(self.get_recognizer_type(body), self._collection_name)

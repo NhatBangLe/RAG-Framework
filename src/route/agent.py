@@ -63,7 +63,7 @@ async def export_config(agent_id: str, generator: DownloadGeneratorDep, service:
     response_model=PagingWrapper[AgentPublic],
     status_code=status.HTTP_200_OK)
 async def get_all_models(params: PagingQuery, service: AgentServiceDepend):
-    return await service.get_all_models_with_paging(params)
+    return await service.get_all_models_with_paging(params, True)
 
 
 @router.get(

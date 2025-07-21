@@ -1,25 +1,24 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 from ..database import get_by_id, MongoCollection, get_collection, create_document, update_by_id, delete_by_id
-from ..dto.prompt import PromptCreate, PromptUpdate
+from ..dto.prompt import PromptCreate, PromptUpdate, PromptPublic
 from ..model import Prompt
 from ...config.model.prompt import PromptConfiguration
 from ...util import PagingWrapper, PagingParams
 
 
 class IPromptService(ABC):
-    """
-    Interface for managing prompt configurations.
-    Defines the contract for services that interact with prompt data.
-    """
 
     @abstractmethod
-    async def get_all_models_with_paging(self, params: PagingParams) -> PagingWrapper[Prompt]:
+    async def get_all_models_with_paging(self, params: PagingParams,
+                                         to_public: bool) -> PagingWrapper[Prompt]:
         """
         Retrieves all prompt configurations with pagination.
 
         Args:
             params: Pagination parameters.
+            to_public: Whether to return public prompt configurations.
 
         Returns:
             A PagingWrapper containing a list of PromptPublic objects.
@@ -57,6 +56,16 @@ class IPromptService(ABC):
             NotFoundError: If no prompt configuration with the given ID is found.
             ValidationError: If the document cannot be validated into a PromptConfiguration.
         """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def convert_dict_to_model(data: dict[str, Any]) -> Prompt:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def convert_dict_to_public(data: dict[str, Any]) -> PromptPublic:
         pass
 
     @abstractmethod
@@ -104,9 +113,10 @@ class PromptServiceImpl(IPromptService):
     def __init__(self):
         self._collection_name = MongoCollection.PROMPT
 
-    async def get_all_models_with_paging(self, params):
+    async def get_all_models_with_paging(self, params, to_public):
         collection = get_collection(self._collection_name)
-        return await PagingWrapper.get_paging(params, collection)
+        map_func = self.convert_dict_to_public if to_public else self.convert_dict_to_model
+        return await PagingWrapper.get_paging(params, collection, map_func)
 
     async def get_model_by_id(self, model_id):
         not_found_msg = f'No prompt configuration with id {model_id} found.'
@@ -116,6 +126,14 @@ class PromptServiceImpl(IPromptService):
         doc_prompt = await self.get_model_by_id(model_id)
         prompt = Prompt.model_validate(doc_prompt)
         return PromptConfiguration.model_validate(prompt.model_dump())
+
+    @staticmethod
+    def convert_dict_to_model(data):
+        return Prompt.model_validate(data)
+
+    @staticmethod
+    def convert_dict_to_public(data):
+        return PromptPublic.model_validate(data)
 
     async def create_new(self, data):
         model = Prompt.model_validate(data.model_dump())
