@@ -1,6 +1,5 @@
 from pydantic import Field, ConfigDict
 
-from ...config.model.prompt import PromptConfiguration
 from ...data import PyObjectId
 from ...data.base_model import BasePrompt
 
@@ -13,6 +12,6 @@ class PromptUpdate(BasePrompt):
     pass
 
 
-class PromptPublic(PromptConfiguration):
+class PromptPublic(BasePrompt):
     id: PyObjectId = Field(validation_alias="_id")
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)

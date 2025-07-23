@@ -3,6 +3,7 @@ import datetime
 from pydantic import BaseModel, Field, field_validator
 
 from ...config.model.mcp import StreamableConnectionConfiguration, StdioConnectionConfiguration
+from ...config.model.prompt import PromptConfiguration
 from ...util.constant import SUPPORTED_LANGUAGE_DICT
 from ...util.function import get_datetime_now
 
@@ -27,9 +28,8 @@ class BaseAgent(BaseModel):
         return v
 
 
-class BasePrompt(BaseModel):
-    suggest_questions_prompt: str = Field(min_length=1)
-    respond_prompt: str = Field(min_length=1)
+class BasePrompt(PromptConfiguration):
+    name: str = Field(min_length=1)
 
 
 class BaseMCPServer(BaseModel):

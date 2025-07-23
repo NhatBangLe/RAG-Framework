@@ -4,10 +4,6 @@ __all__ = ["PromptConfiguration"]
 
 
 class PromptConfiguration(BaseModel):
-    suggest_questions_prompt: str = Field(
-        min_length=1,
-        description="A prompt is used for instructing LLM to generate questions about specified topics",
-        default="You are an expert at generating questions on various subjects.")
     respond_prompt: str = Field(
         min_length=1,
         description="A prompt is used for instructing LLM to generate questions about specified topics",
