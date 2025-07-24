@@ -17,7 +17,7 @@ router = APIRouter(
 
 PromptCreateBody = Annotated[PromptCreate, Body(
     examples=[{
-        "suggest_questions_prompt": "You are an expert at generating questions on various subjects.",
+        "name": "Q&A prompt",
         "respond_prompt": "You are a Question-Answering assistant."
                           "You are an AI Agent that built by using LangGraph and LLMs."
                           "\nYour mission is that you need to analyze and answer questions."
@@ -27,7 +27,7 @@ PromptCreateBody = Annotated[PromptCreate, Body(
 )]
 PromptUpdateBody = Annotated[PromptUpdate, Body(
     examples=[{
-        "suggest_questions_prompt": "You are an expert at generating questions on various subjects.",
+        "name": "Q&A prompt",
         "respond_prompt": "You are a Question-Answering assistant."
                           "You are an AI Agent that built by using LangGraph and LLMs."
                           "\nYour mission is that you need to analyze and answer questions."

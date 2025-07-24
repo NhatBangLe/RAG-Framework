@@ -53,7 +53,6 @@ VectorStoreCreateBody = Annotated[VectorStoreCreate, Body(
             "name": "default_chroma_retriever",
             "weight": 1.0,
             "mode": "persistent",
-            "persist_directory": "chroma_persist",
             "collection_name": "chroma_collection",
             "external_data_file_id": None,
             "connection": None,
@@ -71,7 +70,6 @@ VectorStoreUpdateBody = Annotated[VectorStoreUpdate, Body(
             "name": "default_chroma_retriever",
             "weight": 1.0,
             "mode": "persistent",
-            "persist_directory": "chroma_persist",
             "collection_name": "chroma_collection",
             "external_data_file_id": None,
             "connection": None,
@@ -116,7 +114,7 @@ async def get_vector_store(store_id: str, service: RetrieverServiceDepend):
     path="/vector-store/create",
     description="Create a vector store. Returns an ID of the created vector store.",
     status_code=status.HTTP_200_OK)
-async def create_vector_store(body: RetrieverCreateBody, service: RetrieverServiceDepend) -> str:
+async def create_vector_store(body: VectorStoreCreateBody, service: RetrieverServiceDepend) -> str:
     return await service.create_new(body)
 
 
@@ -124,7 +122,7 @@ async def create_vector_store(body: RetrieverCreateBody, service: RetrieverServi
     path="/vector-store/{store_id}/update",
     description="Update a vector store.",
     status_code=status.HTTP_204_NO_CONTENT)
-async def update_vector_store(store_id: str, body: RetrieverUpdateBody, service: RetrieverServiceDepend) -> None:
+async def update_vector_store(store_id: str, body: VectorStoreUpdateBody, service: RetrieverServiceDepend) -> None:
     await service.update_model_by_id(store_id, body)
 
 

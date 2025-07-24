@@ -11,6 +11,7 @@ from ...config.model.chat_model.google_genai import GoogleGenAIChatModelConfigur
 from ...config.model.chat_model.ollama import OllamaChatModelConfiguration
 from ...util import PagingParams, PagingWrapper
 from ...util.error import InvalidArgumentError
+from ...util.function import strict_bson_id_parser
 
 
 # noinspection PyTypeHints
@@ -143,8 +144,9 @@ class ChatModelServiceImpl(IChatModelService):
         return await PagingWrapper.get_paging(params, collection, map_func)
 
     async def get_model_by_id(self, model_id):
+        valid_id = strict_bson_id_parser(model_id)
         not_found_msg = f'No chat model with id {model_id} found.'
-        doc = await get_by_id(model_id, self._collection_name, not_found_msg)
+        doc = await get_by_id(valid_id, self._collection_name, not_found_msg)
         return self.convert_dict_to_model(doc)
 
     @staticmethod
@@ -191,8 +193,10 @@ class ChatModelServiceImpl(IChatModelService):
         return await create_document(self.convert_base_to_model(body), self._collection_name)
 
     async def update_model_by_id(self, model_id, model):
+        valid_id = strict_bson_id_parser(model_id)
         not_found_msg = f'Cannot update chat model with id {model_id}. Because no chat model found.'
-        await update_by_id(model_id, model, self._collection_name, not_found_msg)
+        await update_by_id(valid_id, model, self._collection_name, not_found_msg)
 
     async def delete_model_by_id(self, model_id):
-        await delete_by_id(model_id, self._collection_name)
+        valid_id = strict_bson_id_parser(model_id)
+        await delete_by_id(valid_id, self._collection_name)

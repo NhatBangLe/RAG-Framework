@@ -1,16 +1,17 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from ..base_model.embeddings import BaseEmbeddings, EmbeddingsType
+from ..base_model.embeddings import BaseEmbeddings
 from ..database import MongoCollection, update_by_id, delete_by_id, get_collection, get_by_id, create_document
 from ..dto.embeddings import EmbeddingsCreate, EmbeddingsUpdate, EmbeddingsPublic, GoogleGenAIEmbeddingsPublic, \
     HuggingFaceEmbeddingsPublic
 from ..model.embeddings import GoogleGenAIEmbeddings, HuggingFaceEmbeddings, Embeddings
-from ...config.model.embeddings import EmbeddingsConfiguration
+from ...config.model.embeddings import EmbeddingsConfiguration, EmbeddingsType
 from ...config.model.embeddings.google_genai import GoogleGenAIEmbeddingsConfiguration
 from ...config.model.embeddings.hugging_face import HuggingFaceEmbeddingsConfiguration
 from ...util import PagingWrapper, PagingParams
 from ...util.error import InvalidArgumentError
+from ...util.function import strict_bson_id_parser
 
 
 # noinspection PyTypeHints
@@ -145,8 +146,9 @@ class EmbeddingsServiceImpl(IEmbeddingsService):
         return await PagingWrapper.get_paging(params, collection, map_func)
 
     async def get_model_by_id(self, model_id):
+        valid_id = strict_bson_id_parser(model_id)
         not_found_msg = f'No embeddings model with id {model_id} found.'
-        doc = await get_by_id(model_id, self._collection_name, not_found_msg)
+        doc = await get_by_id(valid_id, self._collection_name, not_found_msg)
         return self.convert_dict_to_model(doc)
 
     async def get_configuration_by_id(self, model_id) -> EmbeddingsConfiguration:
@@ -192,8 +194,10 @@ class EmbeddingsServiceImpl(IEmbeddingsService):
         return await create_document(self.convert_base_to_model(data), self._collection_name)
 
     async def update_model_by_id(self, model_id, data):
+        valid_id = strict_bson_id_parser(model_id)
         not_found_msg = f'Cannot update embeddings model with id {model_id}. Because no embeddings model found.'
-        await update_by_id(model_id, data, self._collection_name, not_found_msg)
+        await update_by_id(valid_id, data, self._collection_name, not_found_msg)
 
     async def delete_model_by_id(self, model_id):
-        await delete_by_id(model_id, self._collection_name)
+        valid_id = strict_bson_id_parser(model_id)
+        await delete_by_id(valid_id, self._collection_name)

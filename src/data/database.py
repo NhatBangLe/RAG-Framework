@@ -37,7 +37,7 @@ def get_session():
     session.end_session()
 
 
-async def get_by_id(entity_id: str, collection: MongoCollection, not_found_msg: str | None = None):
+async def get_by_id(entity_id: ObjectId, collection: MongoCollection, not_found_msg: str | None = None):
     """
     Retrieves a document by its ID from a specified MongoDB collection.
 
@@ -53,7 +53,7 @@ async def get_by_id(entity_id: str, collection: MongoCollection, not_found_msg: 
         NotFoundError: If no entity with the given ID is found in the collection.
     """
     c = get_collection(collection)
-    document = await c.find_one({"_id": ObjectId(entity_id)})
+    document = await c.find_one({"_id": entity_id})
     if document is None:
         msg = not_found_msg if not_found_msg is not None else f'No entity with id {entity_id} found.'
         raise NotFoundError(msg)
@@ -76,7 +76,7 @@ async def create_document(data: BaseModel, collection: MongoCollection):
     return str(created_entity.inserted_id)
 
 
-async def update_by_id(entity_id: str, update_data: BaseModel, collection: MongoCollection,
+async def update_by_id(entity_id: ObjectId, update_data: BaseModel, collection: MongoCollection,
                        not_found_msg: str | None = None):
     """
     Updates an existing document by its ID in a specified MongoDB collection.
@@ -92,7 +92,7 @@ async def update_by_id(entity_id: str, update_data: BaseModel, collection: Mongo
             does not modify any document.
     """
     collection = get_collection(collection)
-    query_filter = {'_id': ObjectId(entity_id)}
+    query_filter = {'_id': entity_id}
     update_operation = {'$set': update_data.model_dump()}
     result = await collection.update_one(query_filter, update_operation)
     if result.modified_count == 0:
@@ -101,7 +101,7 @@ async def update_by_id(entity_id: str, update_data: BaseModel, collection: Mongo
         raise NotFoundError(msg)
 
 
-async def delete_by_id(entity_id: str, collection: MongoCollection, not_found_msg: str | None = None):
+async def delete_by_id(entity_id: ObjectId, collection: MongoCollection, not_found_msg: str | None = None):
     """
     Deletes a document by its ID from a specified MongoDB collection.
 
@@ -114,7 +114,7 @@ async def delete_by_id(entity_id: str, collection: MongoCollection, not_found_ms
         NotFoundError: If no entity with the given ID is found in the collection.
     """
     c = get_collection(collection)
-    result = await c.delete_one({"_id": ObjectId(entity_id)})
+    result = await c.delete_one({"_id": entity_id})
     if result.deleted_count == 0:
         msg = not_found_msg if not_found_msg is not None else f'No entity with id {entity_id} found.'
         raise NotFoundError(msg)

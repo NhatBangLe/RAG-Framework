@@ -14,6 +14,7 @@ from ...config.model.recognizer.image.preprocessing import ImageResizeConfigurat
     ImageNormalizeConfiguration, ImageCenterCropConfiguration, ImagePadConfiguration
 from ...util import PagingParams, PagingWrapper
 from ...util.error import InvalidArgumentError
+from ...util.function import strict_bson_id_parser
 
 
 class IRecognizerService(ABC):
@@ -34,12 +35,12 @@ class IRecognizerService(ABC):
         pass
 
     @abstractmethod
-    async def get_model_by_id(self, recognizer_id: str) -> Recognizer:
+    async def get_model_by_id(self, model_id: str) -> Recognizer:
         """
         Retrieves a recognizer model document by its ID.
 
         Args:
-            recognizer_id: The unique identifier of the recognizer model.
+            model_id: The unique identifier of the recognizer model.
 
         Returns:
             A Recognizer object representing the model.
@@ -131,12 +132,12 @@ class IRecognizerService(ABC):
         pass
 
     @abstractmethod
-    async def update_model_by_id(self, recognizer_id: str, model: RecognizerUpdate) -> None:
+    async def update_model_by_id(self, model_id: str, model: RecognizerUpdate) -> None:
         """
         Updates an existing recognizer model by its ID.
 
         Args:
-            recognizer_id: The unique identifier of the recognizer model to update.
+            model_id: The unique identifier of the recognizer model to update.
             model: The updated data for the recognizer model.
 
         Raises:
@@ -145,12 +146,12 @@ class IRecognizerService(ABC):
         pass
 
     @abstractmethod
-    async def delete_model_by_id(self, recognizer_id: str) -> None:
+    async def delete_model_by_id(self, model_id: str) -> None:
         """
         Deletes a recognizer model by its ID.
 
         Args:
-            recognizer_id: The unique identifier of the recognizer model to delete.
+            model_id: The unique identifier of the recognizer model to delete.
 
         Raises:
             NotFoundError: If no recognizer with the given ID is found.
@@ -168,9 +169,10 @@ class RecognizerServiceImpl(IRecognizerService):
         map_func = self.convert_dict_to_public if to_public else self.convert_dict_to_model
         return await PagingWrapper.get_paging(params, collection, map_func)
 
-    async def get_model_by_id(self, recognizer_id):
-        not_found_msg = f'No recognizer with id {recognizer_id} found.'
-        doc = await get_by_id(recognizer_id, self._collection_name, not_found_msg)
+    async def get_model_by_id(self, model_id):
+        valid_id = strict_bson_id_parser(model_id)
+        not_found_msg = f'No recognizer with id {model_id} found.'
+        doc = await get_by_id(valid_id, self._collection_name, not_found_msg)
         return self.convert_dict_to_model(doc)
 
     @staticmethod
@@ -248,9 +250,11 @@ class RecognizerServiceImpl(IRecognizerService):
     async def create_new(self, body):
         return await create_document(self.get_recognizer_type(body), self._collection_name)
 
-    async def update_model_by_id(self, recognizer_id, model):
-        not_found_msg = f'Cannot update recognizer with id {recognizer_id}. Because no recognizer found.'
-        await update_by_id(recognizer_id, model, self._collection_name, not_found_msg)
+    async def update_model_by_id(self, model_id, model):
+        valid_id = strict_bson_id_parser(model_id)
+        not_found_msg = f'Cannot update recognizer with id {model_id}. Because no recognizer found.'
+        await update_by_id(valid_id, model, self._collection_name, not_found_msg)
 
-    async def delete_model_by_id(self, recognizer_id: str) -> None:
-        await delete_by_id(recognizer_id, self._collection_name)
+    async def delete_model_by_id(self, model_id: str) -> None:
+        valid_id = strict_bson_id_parser(model_id)
+        await delete_by_id(valid_id, self._collection_name)

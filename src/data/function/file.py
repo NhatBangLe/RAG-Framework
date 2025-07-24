@@ -9,6 +9,7 @@ from fastapi import UploadFile
 from ..database import get_by_id, MongoCollection, create_document, delete_by_id
 from ..model import File
 from ...util.constant import EnvVar
+from ...util.function import strict_bson_id_parser
 
 
 class IFileService(ABC):
@@ -61,8 +62,9 @@ class FileServiceImpl(IFileService):
         self._collection_name = MongoCollection.FILE
 
     async def get_file_by_id(self, file_id):
+        valid_id = strict_bson_id_parser(file_id)
         not_found_msg = f'No file with id {file_id} found.'
-        doc = await get_by_id(file_id, self._collection_name, not_found_msg)
+        doc = await get_by_id(valid_id, self._collection_name, not_found_msg)
         return File.model_validate(doc)
 
     async def save_file(self, file):
@@ -75,7 +77,8 @@ class FileServiceImpl(IFileService):
         return save_record_task.result()
 
     async def delete_file_by_id(self, file_id):
+        valid_id = strict_bson_id_parser(file_id)
         file_dict = await self.get_file_by_id(file_id)
         file = File.model_validate(file_dict)
         Path(file.path).unlink(missing_ok=True)
-        await delete_by_id(file_id, self._collection_name)
+        await delete_by_id(valid_id, self._collection_name)

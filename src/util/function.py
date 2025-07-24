@@ -4,12 +4,34 @@ import uuid
 import zipfile
 from pathlib import Path
 
+from bson import ObjectId
+from bson.errors import InvalidId
+
 from .constant import DEFAULT_TIMEZONE, EnvVar
 from .error import InvalidArgumentError
 
 
 def get_datetime_now():
     return datetime.datetime.now(DEFAULT_TIMEZONE)
+
+
+def strict_bson_id_parser(bson_string: str) -> ObjectId:
+    """
+    Strict bson.ObjectId parser that raises an exception on invalid input.
+
+    Args:
+        bson_string: String representation of ObjectID
+
+    Returns:
+        ObjectId object
+
+    Raises:
+        InvalidArgumentError: If ID string is invalid
+    """
+    try:
+        return ObjectId(bson_string)
+    except InvalidId as e:
+        raise InvalidArgumentError(f"Invalid ID format: {bson_string}") from e
 
 
 def strict_uuid_parser(uuid_string: str) -> uuid.UUID:

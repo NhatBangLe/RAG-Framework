@@ -16,6 +16,7 @@ from ...config.model.retriever.bm25 import BM25Configuration
 from ...config.model.retriever.vector_store.chroma import ChromaVSConfiguration
 from ...util import PagingWrapper, PagingParams, DEFAULT_CHARSET
 from ...util.error import InvalidArgumentError
+from ...util.function import strict_bson_id_parser
 
 
 # noinspection PyTypeHints
@@ -156,8 +157,9 @@ class RetrieverServiceImpl(IRetrieverService):
         return await PagingWrapper.get_paging(params, collection, map_func)
 
     async def get_model_by_id(self, model_id):
+        valid_id = strict_bson_id_parser(model_id)
         not_found_msg = f'No retriever with id {model_id} found.'
-        doc = await get_by_id(model_id, self._collection_name, not_found_msg)
+        doc = await get_by_id(valid_id, self._collection_name, not_found_msg)
         return self.convert_dict_to_model(doc)
 
     async def get_configuration_by_id(self, model_id, export_dir):
@@ -236,11 +238,20 @@ class RetrieverServiceImpl(IRetrieverService):
             raise ValueError(f"Unsupported recognizer type: {type(data)}")
 
     async def create_new(self, data):
-        return await create_document(self.convert_base_to_model(data), self._collection_name)
+        model = self.convert_base_to_model(data)
+        if isinstance(model, BM25Retriever):
+            embeddings_id = model.embeddings_id
+            await self._embeddings_service.get_model_by_id(embeddings_id)
+        elif isinstance(model, ChromaRetriever):
+            embeddings_id = model.embeddings_id
+            await self._embeddings_service.get_model_by_id(embeddings_id)
+        return await create_document(model, self._collection_name)
 
     async def update_model_by_id(self, model_id, data):
+        valid_id = strict_bson_id_parser(model_id)
         not_found_msg = f'Cannot update retriever with id {model_id}. Because no retriever found.'
-        await update_by_id(model_id, data, self._collection_name, not_found_msg)
+        await update_by_id(valid_id, data, self._collection_name, not_found_msg)
 
     async def delete_model_by_id(self, model_id):
-        await delete_by_id(model_id, self._collection_name)
+        valid_id = strict_bson_id_parser(model_id)
+        await delete_by_id(valid_id, self._collection_name)

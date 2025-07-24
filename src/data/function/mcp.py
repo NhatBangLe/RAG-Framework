@@ -3,10 +3,11 @@ from typing import Any
 
 from ..database import get_by_id, MongoCollection, update_by_id, delete_by_id, get_collection, create_document
 from ..dto.mcp import MCPUpdate, MCPCreate, MCPPublic, MCPStreamableServerPublic, MCPStdioServerPublic
-from ..model.mcp import MCP
+from ..model.mcp import MCP, MCPStreamableServer, MCPStdioServer
 from ...config.model.mcp import MCPConnectionConfiguration, MCPTransport, \
     StreamableConnectionConfiguration, StdioConnectionConfiguration
 from ...util import PagingWrapper, PagingParams
+from ...util.function import strict_bson_id_parser
 
 
 # noinspection PyTypeHints
@@ -122,8 +123,9 @@ class MCPServiceImpl(IMCPService):
         return await PagingWrapper.get_paging(params, collection, map_func)
 
     async def get_model_by_id(self, model_id):
+        valid_id = strict_bson_id_parser(model_id)
         not_found_msg = f'No MCP configuration with id {model_id} found.'
-        doc = await get_by_id(model_id, self._collection_name, not_found_msg)
+        doc = await get_by_id(valid_id, self._collection_name, not_found_msg)
         return self.convert_dict_to_model(doc)
 
     async def get_configuration_by_id(self, model_id):
@@ -138,7 +140,13 @@ class MCPServiceImpl(IMCPService):
 
     @staticmethod
     def convert_dict_to_model(data):
-        return MCP.model_validate(data)
+        data_type = data["type"]
+        if data_type == MCPTransport.STREAMABLE_HTTP.value:
+            return MCPStreamableServer.model_validate(data)
+        elif data_type == MCPTransport.STDIO.value:
+            return MCPStdioServer.model_validate(data)
+        else:
+            raise ValueError(f"Unsupported MCP transport type: {data_type}")
 
     @staticmethod
     def convert_dict_to_public(data):
@@ -154,8 +162,10 @@ class MCPServiceImpl(IMCPService):
         return await create_document(data, self._collection_name)
 
     async def update_model_by_id(self, model_id, data):
+        valid_id = strict_bson_id_parser(model_id)
         not_found_msg = f'Cannot update MCP configuration with id {model_id}. Because no MCP configuration found.'
-        await update_by_id(model_id, data, self._collection_name, not_found_msg)
+        await update_by_id(valid_id, data, self._collection_name, not_found_msg)
 
     async def delete_model_by_id(self, model_id):
-        await delete_by_id(model_id, self._collection_name)
+        valid_id = strict_bson_id_parser(model_id)
+        await delete_by_id(valid_id, self._collection_name)

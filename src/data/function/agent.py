@@ -1,11 +1,11 @@
 import asyncio
+import logging
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Literal
 
 import jsonpickle
-from setuptools.compat.py311 import shutil_rmtree
 
 from src.config.model.agent import AgentConfiguration
 from .chat_model import IChatModelService
@@ -21,7 +21,8 @@ from ..model import Agent
 from ...config.model.mcp import MCPConnectionConfiguration, MCPConfiguration
 from ...config.model.retriever import RetrieverConfiguration
 from ...util import SecureDownloadGenerator, FileInformation, PagingParams, PagingWrapper, DEFAULT_CHARSET
-from ...util.function import get_cache_dir_path, get_datetime_now, zip_folder
+from ...util.error import NotFoundError
+from ...util.function import get_cache_dir_path, get_datetime_now, zip_folder, strict_bson_id_parser
 
 
 class IAgentService(ABC):
@@ -113,30 +114,16 @@ class IAgentService(ABC):
         pass
 
     @abstractmethod
-    async def delete_model_by_id(self, agent_id: str) -> None:
+    async def delete_model_by_id(self, model_id: str) -> None:
         """
         Deletes an agent configuration by its ID.
 
         Args:
-            agent_id: The unique identifier of the agent to delete.
+            model_id: The unique identifier of the agent to delete.
 
         Raises:
             NotFoundError: If no agent with the given ID is found.
             IOError: If there's an issue deleting associated cache files.
-        """
-        pass
-
-    @abstractmethod
-    async def invalidate_agent_cache(self, agent_id: str) -> None:
-        """
-        Invalidates and removes the cached directory for a specific agent.
-
-        Args:
-            agent_id: The ID of the agent whose cache should be invalidated.
-
-        Raises:
-            NotFoundError: If no agent with the given ID is found.
-            IOError: If there's an issue, remove the cache directory.
         """
         pass
 
@@ -161,6 +148,7 @@ class IAgentService(ABC):
 
 
 class AgentServiceImpl(IAgentService):
+    _logger = logging.getLogger(__name__)
 
     def __init__(self,
                  chat_model_service: IChatModelService,
@@ -207,8 +195,9 @@ class AgentServiceImpl(IAgentService):
         return await PagingWrapper.get_paging(params, collection, map_func)
 
     async def get_model_by_id(self, model_id):
+        valid_id = strict_bson_id_parser(model_id)
         not_found_msg = f'No agent configuration with id {model_id} found.'
-        return await get_by_id(model_id, self._collection_name, not_found_msg)
+        return await get_by_id(valid_id, self._collection_name, not_found_msg)
 
     @staticmethod
     def convert_dict_to_model(data):
@@ -220,23 +209,19 @@ class AgentServiceImpl(IAgentService):
 
     async def create_new(self, data):
         model = Agent.model_validate(data.model_dump())
+        await self._check_entities_exists(model)
         return await create_document(model, self._collection_name)
 
     async def update_model_by_id(self, model_id, data):
+        valid_id = strict_bson_id_parser(model_id)
         model = Agent.model_validate(data.model_dump())
+        await self._check_entities_exists(model)
         not_found_msg = f'Cannot update agent configuration with id {model_id}. Because no entity found.'
-        await update_by_id(model_id, model, self._collection_name, not_found_msg)
+        await update_by_id(valid_id, model, self._collection_name, not_found_msg)
 
-    async def delete_model_by_id(self, agent_id):
-        await delete_by_id(agent_id, self._collection_name)
-
-    async def invalidate_agent_cache(self, agent_id):
-        doc_agent = await self.get_model_by_id(agent_id)
-        agent = Agent.model_validate(doc_agent)
-        cache_dir = Path(get_cache_dir_path())
-        folder_for_exporting = cache_dir.joinpath(agent.id)
-        if folder_for_exporting.is_dir():
-            shutil.rmtree(str(folder_for_exporting.absolute().resolve()))
+    async def delete_model_by_id(self, model_id):
+        valid_id = strict_bson_id_parser(model_id)
+        await delete_by_id(valid_id, self._collection_name)
 
     async def get_exported_agent_config_file_token(self, agent_id, generator):
         doc_agent = await self.get_model_by_id(agent_id)
@@ -252,8 +237,7 @@ class AgentServiceImpl(IAgentService):
             "path": str(exported_file.absolute().resolve()),
             "mime_type": "application/zip"
         }
-        if exported_file.is_file():
-            return generator.generate_token(file_info)
+        exported_file.unlink(missing_ok=True)
 
         # Write a config.json file
         config_obj = await self._get_agent_config(agent)
@@ -261,9 +245,25 @@ class AgentServiceImpl(IAgentService):
         config_dir.joinpath("config.json").write_text(jsonpickle.encode(config_obj, indent=2), encoding=encoding)
 
         zip_folder(folder_for_exporting, exported_file)
-        shutil_rmtree(folder_for_exporting)  # remove folder after having zipped
+        shutil.rmtree(folder_for_exporting)  # remove folder after having zipped
 
         return generator.generate_token(file_info)
+
+    async def _check_entities_exists(self, model: Agent):
+        try:
+            async with asyncio.TaskGroup() as tg:
+                tg.create_task(self._recognizer_service.get_model_by_id(model.image_recognizer_id))
+                tg.create_task(self._chat_model_service.get_model_by_id(model.llm_id))
+                tg.create_task(self._prompt_service.get_model_by_id(model.prompt_id))
+                if model.retriever_ids is not None:
+                    for retriever_id in model.retriever_ids:
+                        tg.create_task(self._retriever_service.get_model_by_id(retriever_id))
+                if model.mcp_server_ids is not None:
+                    for server_id in model.mcp_server_ids:
+                        tg.create_task(self._mcp_service.get_model_by_id(server_id))
+        except ExceptionGroup as ex:
+            self._logger.debug(ex)
+            raise NotFoundError(reason="Some entities are not exists.")
 
     async def _get_agent_config(self, agent: Agent):
         dict_value: dict[str, Any] = {
@@ -287,12 +287,12 @@ class AgentServiceImpl(IAgentService):
                 export_dir = self.get_export_path(agent.id, "recognizer")
                 task_dict["image_recognizer"] = tg.create_task(
                     self._recognizer_service.get_configuration_by_id(rec_id, export_dir))
-            if agent.vector_store_ids and len(agent.vector_store_ids) > 0:
+            if agent.retriever_ids and len(agent.retriever_ids) > 0:
                 async def get_retrievers() -> list[RetrieverConfiguration]:
                     tasks: list[asyncio.Task] = []
                     retriever_export_dir = self.get_export_path(agent.id, "retriever")
                     async with asyncio.TaskGroup() as group:
-                        for retriever_id in agent.vector_store_ids:
+                        for retriever_id in agent.retriever_ids:
                             task = group.create_task(
                                 self._retriever_service.get_configuration_by_id(retriever_id, retriever_export_dir))
                             tasks.append(task)
@@ -301,7 +301,7 @@ class AgentServiceImpl(IAgentService):
                 task_dict["retrievers"] = tg.create_task(get_retrievers())
             # if agent.tool_ids and len(agent.tool_ids) > 0:
             #     task_dict["tools"] = ""
-            if agent.mcp_id:
+            if agent.mcp_server_ids:
                 async def get_mcp_configuration():
                     tasks: list[tuple[asyncio.Task, asyncio.Task]] = []
                     async with asyncio.TaskGroup() as group:
