@@ -5,7 +5,7 @@ from enum import Enum
 from bson import ObjectId
 from pydantic import BaseModel
 
-from .model import Prompt, Agent
+from .model import Prompt
 from .model.chat_model import GoogleGenAIChatModel
 from .model.embeddings import GoogleGenAIEmbeddings
 from .model.retriever import ChromaRetriever, BM25Retriever
@@ -149,9 +149,8 @@ async def insert_default_data():
                                       })
     vector_store = ChromaRetriever(_id=id_dict["chroma"], name="chroma_db", weight=0.6,
                                    embeddings_id=str(id_dict["embedding_model"]))
-    bm25 = BM25Retriever(_id=id_dict["bm25"], name="bm25_db", weight=0.4,
+    bm25 = BM25Retriever(_id=id_dict["bm25"], name="default_bm25_retriever", weight=0.4,
                          embeddings_id=str(id_dict["embedding_model"]))
-    agent = Agent()
 
     async with asyncio.TaskGroup() as tg:
         tg.create_task(create_document(chat_model, MongoCollection.CHAT_MODEL))

@@ -6,6 +6,7 @@ from ..dto.prompt import PromptCreate, PromptUpdate, PromptPublic
 from ..model import Prompt
 from ...config.model.prompt import PromptConfiguration
 from ...util import PagingWrapper, PagingParams
+from ...util.error import NotAcceptableError
 from ...util.function import strict_bson_id_parser
 
 
@@ -149,4 +150,15 @@ class PromptServiceImpl(IPromptService):
 
     async def delete_model_by_id(self, model_id):
         valid_id = strict_bson_id_parser(model_id)
+        doc = await get_by_id(valid_id, self._collection_name)
+        if doc is None:
+            return
+
+        # Check Agent using
+        collection = get_collection(MongoCollection.AGENT)
+        agent_using_doc = await collection.find_one({"prompt_id": model_id})
+        if agent_using_doc is not None:
+            raise NotAcceptableError(f"Cannot delete prompt with id {model_id}. "
+                                     f"Agent with id {agent_using_doc["_id"]} is still using it.")
+
         await delete_by_id(valid_id, self._collection_name)

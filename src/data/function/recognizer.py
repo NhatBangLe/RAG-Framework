@@ -13,7 +13,7 @@ from ..model.recognizer import ImageRecognizer, Recognizer
 from ...config.model.recognizer import RecognizerConfiguration, ClassDescriptor, RecognizerOutput
 from ...config.model.recognizer.image import ImageRecognizerConfiguration, ImagePreprocessingConfiguration
 from ...config.model.recognizer.image.preprocessing import ImageResizeConfiguration, ImageGrayscaleConfiguration, \
-    ImageNormalizeConfiguration, ImageCenterCropConfiguration, ImagePadConfiguration
+    ImagePadConfiguration
 from ...util import PagingParams, PagingWrapper
 from ...util.error import InvalidArgumentError, NotAcceptableError
 from ...util.function import strict_bson_id_parser
@@ -193,10 +193,6 @@ class RecognizerServiceImpl(IRecognizerService):
             return ImageResizeConfiguration.model_validate(dict_value)
         elif base_data.type == ImagePreprocessingType.PAD:
             return ImagePadConfiguration.model_validate(dict_value)
-        elif base_data.type == ImagePreprocessingType.CENTER_CROP:
-            return ImageCenterCropConfiguration.model_validate(dict_value)
-        elif base_data.type == ImagePreprocessingType.NORMALIZE:
-            return ImageNormalizeConfiguration.model_validate(dict_value)
         elif base_data.type == ImagePreprocessingType.GRAYSCALE:
             return ImageGrayscaleConfiguration.model_validate(dict_value)
         else:

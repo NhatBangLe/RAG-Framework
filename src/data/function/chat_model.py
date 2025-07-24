@@ -10,7 +10,7 @@ from ...config.model.chat_model import ChatModelConfiguration, ChatModelType
 from ...config.model.chat_model.google_genai import GoogleGenAIChatModelConfiguration
 from ...config.model.chat_model.ollama import OllamaChatModelConfiguration
 from ...util import PagingParams, PagingWrapper
-from ...util.error import InvalidArgumentError
+from ...util.error import InvalidArgumentError, NotAcceptableError
 from ...util.function import strict_bson_id_parser
 
 
@@ -199,4 +199,15 @@ class ChatModelServiceImpl(IChatModelService):
 
     async def delete_model_by_id(self, model_id):
         valid_id = strict_bson_id_parser(model_id)
+        doc = await get_by_id(valid_id, self._collection_name)
+        if doc is None:
+            return
+
+        # Check Agent using
+        collection = get_collection(MongoCollection.AGENT)
+        agent_using_doc = await collection.find_one({"llm_id": model_id})
+        if agent_using_doc is not None:
+            raise NotAcceptableError(f"Cannot delete chat model with id {model_id}. "
+                                     f"Agent with id {agent_using_doc["_id"]} is still using it.")
+
         await delete_by_id(valid_id, self._collection_name)

@@ -12,8 +12,8 @@ class BaseEmbeddings(BaseModel):
 
 
 class BaseGoogleGenAIEmbeddings(BaseEmbeddings, GoogleGenAIEmbeddingsConfiguration):
-    pass
+    type: EmbeddingsType = Field(default=EmbeddingsType.GOOGLE_GENAI, frozen=True)
 
 
 class BaseHuggingFaceEmbeddings(BaseEmbeddings, HuggingFaceEmbeddingsConfiguration):
-    pass
+    type: EmbeddingsType = Field(default=EmbeddingsType.HUGGING_FACE, frozen=True)

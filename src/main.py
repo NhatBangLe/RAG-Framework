@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from pymongo import AsyncMongoClient
 from pymongo.server_api import ServerApi
 
+from src.data.database import insert_default_data
 from src.dependency import DownloadGeneratorDep
 from src.route.agent import router as agent_router
 from src.route.chat_model import router as chat_model_router
@@ -60,6 +61,7 @@ mongodb_client = AsyncMongoClient(os.getenv(EnvVar.DB_URI.value), server_api=Ser
 @asynccontextmanager
 async def lifespan(app_inst: FastAPI):
     await mongodb_client.aconnect()
+    await insert_default_data()
 
     yield
 

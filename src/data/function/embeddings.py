@@ -10,7 +10,7 @@ from ...config.model.embeddings import EmbeddingsConfiguration, EmbeddingsType
 from ...config.model.embeddings.google_genai import GoogleGenAIEmbeddingsConfiguration
 from ...config.model.embeddings.hugging_face import HuggingFaceEmbeddingsConfiguration
 from ...util import PagingWrapper, PagingParams
-from ...util.error import InvalidArgumentError
+from ...util.error import InvalidArgumentError, NotAcceptableError
 from ...util.function import strict_bson_id_parser
 
 
@@ -200,4 +200,15 @@ class EmbeddingsServiceImpl(IEmbeddingsService):
 
     async def delete_model_by_id(self, model_id):
         valid_id = strict_bson_id_parser(model_id)
+        doc = await get_by_id(valid_id, self._collection_name)
+        if doc is None:
+            return
+
+        # Check Retriever using
+        collection = get_collection(MongoCollection.RETRIEVER)
+        retriever_using_doc = await collection.find_one({"embeddings_id": model_id})
+        if retriever_using_doc is not None:
+            raise NotAcceptableError(f"Cannot delete chat model with id {model_id}. "
+                                     f"Retriever with id {retriever_using_doc["_id"]} is still using it.")
+
         await delete_by_id(valid_id, self._collection_name)
