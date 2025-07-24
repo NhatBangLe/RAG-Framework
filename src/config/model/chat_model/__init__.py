@@ -7,7 +7,6 @@ from src.config.model import Configuration
 class ChatModelType(str, Enum):
     GOOGLE_GENAI = "google_genai"
     OLLAMA = "ollama"
-    ANTHROPIC = "anthropic"
 
 
 class ChatModelConfiguration(Configuration):
