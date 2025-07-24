@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Literal
 
 from pydantic import Field
 
@@ -31,7 +30,6 @@ class HarmBlockThreshold(str, Enum):
 
 
 class GoogleGenAILLMConfiguration(LLMConfiguration):
-    provider: Literal["google_genai"] = "google_genai"
     temperature: float = Field(
         description="Run inference with this temperature.", default=0.5, ge=0.0, le=2.0)
     max_tokens: int = Field(
