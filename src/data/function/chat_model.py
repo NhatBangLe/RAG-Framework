@@ -1,14 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from ..base_model.chat_model import BaseChatModel, ChatModelType
+from ..base_model.chat_model import BaseChatModel
 from ..database import get_by_id, MongoCollection, update_by_id, create_document, delete_by_id, get_collection
 from ..dto.chat_model import ChatModelUpdate, ChatModelCreate, ChatModelPublic, GoogleGenAIChatModelPublic, \
     OllamaChatModelPublic
 from ..model.chat_model import GoogleGenAIChatModel, OllamaChatModel, ChatModel
-from ...config.model.chat_model import LLMConfiguration
-from ...config.model.chat_model.google_genai import GoogleGenAILLMConfiguration
-from ...config.model.chat_model.ollama import OllamaLLMConfiguration
+from ...config.model.chat_model import ChatModelConfiguration, ChatModelType
+from ...config.model.chat_model.google_genai import GoogleGenAIChatModelConfiguration
+from ...config.model.chat_model.ollama import OllamaChatModelConfiguration
 from ...util import PagingParams, PagingWrapper
 from ...util.error import InvalidArgumentError
 
@@ -76,7 +76,7 @@ class IChatModelService(ABC):
         pass
 
     @abstractmethod
-    async def get_configuration_by_id(self, model_id: str) -> LLMConfiguration:
+    async def get_configuration_by_id(self, model_id: str) -> ChatModelConfiguration:
         """
         Retrieves a chat model and converts it into an LLM configuration.
 
@@ -84,7 +84,7 @@ class IChatModelService(ABC):
             model_id: The ID of the chat model.
 
         Returns:
-            An LLMConfiguration instance specific to the chat model type.
+            An ChatModelConfiguration instance specific to the chat model type.
 
         Raises:
             NotFoundError: If no chat model with the given ID is found.
@@ -181,9 +181,9 @@ class ChatModelServiceImpl(IChatModelService):
         chat_model = await self.get_model_by_id(model_id)
         dict_value = chat_model.model_dump()
         if chat_model.type == ChatModelType.GOOGLE_GENAI:
-            return GoogleGenAILLMConfiguration.model_validate(dict_value)
+            return GoogleGenAIChatModelConfiguration.model_validate(dict_value)
         elif chat_model.type == ChatModelType.OLLAMA:
-            return OllamaLLMConfiguration.model_validate(dict_value)
+            return OllamaChatModelConfiguration.model_validate(dict_value)
         else:
             raise InvalidArgumentError(f'LLM type {type(chat_model)} is not supported.')
 

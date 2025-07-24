@@ -1,19 +1,12 @@
-from enum import Enum
-
 from pydantic import Field, BaseModel, field_validator
 
-from ...config.model.chat_model.google_genai import HarmCategory, HarmBlockThreshold, GoogleGenAILLMConfiguration
-from ...config.model.chat_model.ollama import OllamaLLMConfiguration
-
-
-class ChatModelType(str, Enum):
-    GOOGLE_GENAI = "google_genai"
-    OLLAMA = "ollama"
+from ...config.model.chat_model.google_genai import HarmCategory, HarmBlockThreshold, \
+    GoogleGenAIChatModelConfiguration
+from ...config.model.chat_model.ollama import OllamaChatModelConfiguration
 
 
 # noinspection PyNestedDecorators
 class BaseChatModel(BaseModel):
-    type: ChatModelType = Field(description="Type of the chat model.", frozen=True)
     model_name: str = Field(min_length=1, max_length=100)
 
     @field_validator("model_name", mode="after")
@@ -24,12 +17,11 @@ class BaseChatModel(BaseModel):
         return model_name
 
 
-class BaseGoogleGenAIChatModel(BaseChatModel, GoogleGenAILLMConfiguration):
-    type: ChatModelType = ChatModelType.GOOGLE_GENAI
+class BaseGoogleGenAIChatModel(BaseChatModel, GoogleGenAIChatModelConfiguration):
     safety_settings: dict[HarmCategory, HarmBlockThreshold] | None = Field(
         default=None,
         description="The default safety settings to use for all generations.")
 
 
-class BaseOllamaChatModel(BaseChatModel, OllamaLLMConfiguration):
-    type: ChatModelType = ChatModelType.OLLAMA
+class BaseOllamaChatModel(BaseChatModel, OllamaChatModelConfiguration):
+    pass
