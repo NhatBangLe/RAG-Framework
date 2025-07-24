@@ -136,7 +136,7 @@ async def insert_default_data():
         "bm25": ObjectId(),
     }
     prompt = Prompt(_id=id_dict["prompt"], name="Default Prompt", respond_prompt=DEFAULT_PROMPT)
-    embedding_model = GoogleGenAIEmbeddings(_id=id_dict["vs_embedding_model"],
+    embedding_model = GoogleGenAIEmbeddings(_id=id_dict["embedding_model"],
                                             name="default_embeddings",
                                             model_name="models/text-embedding-004",
                                             task_type=GoogleGenAIEmbeddingsTaskType.RETRIEVAL_QUERY)
