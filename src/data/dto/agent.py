@@ -4,7 +4,6 @@ from .. import PyObjectId
 from ..base_model import BaseAgent
 
 
-
 class AgentCreate(BaseAgent):
     pass
 

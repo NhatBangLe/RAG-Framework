@@ -47,16 +47,6 @@ RecognizerCreateBody = Annotated[RecognizerCreate, Body(
                     "antialias": True
                 },
                 {
-                    "type": "normalize",
-                    "mean": [0.485, 0.456, 0.406],
-                    "std": [0.229, 0.224, 0.225],
-                    "inplace": False
-                },
-                {
-                    "type": "center_crop",
-                    "size": [64, 64]
-                },
-                {
                     "type": "pad",
                     "padding": 10,
                     "fill": 0,
@@ -94,10 +84,6 @@ RecognizerUpdateBody = Annotated[RecognizerUpdate, Body(
                     "interpolation": "bicubic",
                     "max_size": 512,
                     "antialias": True
-                },
-                {
-                    "type": "center_crop",
-                    "size": [64, 64]
                 },
                 {
                     "type": "pad",

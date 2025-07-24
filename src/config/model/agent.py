@@ -1,4 +1,4 @@
-from pydantic import field_validator
+from pydantic import field_validator, Field
 
 from src.config.model import Configuration
 from src.config.model.chat_model import ChatModelConfiguration
@@ -15,13 +15,13 @@ class AgentConfiguration(Configuration):
     """
     Agent configuration class for deserialize configuration files to pydantic object.
     """
-    agent_name: str
-    description: str | None = None
+    agent_name: str = Field(min_length=1, max_length=100)
+    description: str | None = Field(default=None, max_length=255)
     language: str
-    image_recognizer: ImageRecognizerConfiguration | None = None
-    retrievers: list[RetrieverConfiguration] | None = None
-    tools: list[ToolConfiguration] | None = None
-    mcp: MCPConfiguration | None = None
+    image_recognizer: ImageRecognizerConfiguration | None = Field(default=None)
+    retrievers: list[RetrieverConfiguration] = Field(min_length=1)
+    tools: list[ToolConfiguration] | None = Field(default=None)
+    mcp: MCPConfiguration | None = Field(default=None)
     llm: ChatModelConfiguration
     prompt: PromptConfiguration
 

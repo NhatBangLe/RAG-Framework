@@ -21,7 +21,7 @@ from src.route.prompt import router as prompt_router
 from src.route.recognizer import router as recognizer_router
 from src.route.retriever import router as retriever_router
 from src.util.constant import EnvVar
-from src.util.error import NotFoundError, InvalidArgumentError
+from src.util.error import NotFoundError, InvalidArgumentError, NotAcceptableError
 
 
 ## Set up logging.
@@ -118,5 +118,14 @@ async def not_found_exception_handler(request: Request, exc: NotFoundError):
 async def invalid_argument_exception_handler(request: Request, exc: InvalidArgumentError):
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
+        content={"message": exc.reason},
+    )
+
+
+# noinspection PyUnusedLocal
+@app.exception_handler(NotAcceptableError)
+async def not_acceptable_exception_handler(request: Request, exc: NotAcceptableError):
+    return JSONResponse(
+        status_code=status.HTTP_406_NOT_ACCEPTABLE,
         content={"message": exc.reason},
     )

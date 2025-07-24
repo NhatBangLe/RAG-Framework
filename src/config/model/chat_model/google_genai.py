@@ -30,6 +30,10 @@ class HarmBlockThreshold(str, Enum):
 
 
 class GoogleGenAIChatModelConfiguration(ChatModelConfiguration):
+
+    def get_api_key_env(self) -> str:
+        return "GOOGLE_API_KEY"
+
     type: ChatModelType = Field(default=ChatModelType.GOOGLE_GENAI, frozen=True)
     temperature: float = Field(
         description="Run inference with this temperature.", default=0.5, ge=0.0, le=2.0)
@@ -49,7 +53,3 @@ class GoogleGenAIChatModelConfiguration(ChatModelConfiguration):
     safety_settings: dict[str, str] | None = Field(
         default=None,
         description="The default safety settings to use for all generations.")
-    # transport: Literal["rest", "grpc", "grpc_asyncio"] = Field(default="rest")
-    # convert_system_message_to_human: bool = Field(
-    #     description="Gemini does not support system messages; any unsupported messages will raise an error.",
-    #     default=False)

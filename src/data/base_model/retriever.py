@@ -2,9 +2,7 @@ from enum import Enum
 
 from pydantic import Field, field_validator, BaseModel
 
-from ...config.model.data import ExternalDocument
-from ...config.model.retriever.bm25 import BM25Configuration
-from ...config.model.retriever.vector_store.chroma import ChromaVSConfiguration
+from ...config.model.retriever.vector_store import VectorStoreConfigurationMode, VectorStoreConnection
 
 
 class RetrieverType(str, Enum):
@@ -17,6 +15,7 @@ class BaseRetriever(BaseModel):
     type: RetrieverType = Field(description="Type of the retriever.", frozen=True)
     name: str = Field(description="An unique name is used for determining retrievers.", min_length=1, max_length=100)
     weight: float = Field(description="Retriever weight for combining results", ge=0.0, le=1.0)
+    k: int = Field(default=4, description="Amount of documents to return")
 
     @field_validator("name", mode="after")
     @classmethod
@@ -26,30 +25,25 @@ class BaseRetriever(BaseModel):
         return name
 
 
-class BaseBM25Retriever(BaseRetriever, BM25Configuration):
+class BaseBM25Retriever(BaseRetriever):
     type: RetrieverType = RetrieverType.BM25
     embeddings_id: str = Field(description="ID of the configured embeddings model.")
     removal_words_file_id: str | None = Field(default=None,
                                               description="ID of a word-file which provides removal words.")
-    # Exclude fields
-    embeddings_model: str | None = Field(default=None, exclude=True)
-    removal_words_path: str | None = Field(default=None, exclude=True)
-
-
-class VectorStoreExternalDocument(ExternalDocument):
-    pass
+    enable_remove_emoji: bool = Field(default=False)
+    enable_remove_emoticon: bool = Field(default=False)
 
 
 class BaseVectorStoreRetriever(BaseRetriever):
-    external_data: list[VectorStoreExternalDocument] | None = Field(
-        default=None,
-        description="External data which documents had been embedded in vector store before.")
-
-
-class BaseChromaRetriever(BaseVectorStoreRetriever, ChromaVSConfiguration):
-    type: RetrieverType = RetrieverType.CHROMA_DB
+    mode: VectorStoreConfigurationMode = Field(default="persistent")
     embeddings_id: str = Field(description="ID of the configured embeddings model.")
+    connection: VectorStoreConnection | None = Field(
+        default=None, description="Connection will be used if the mode value is remote")
+    collection_name: str = Field(default="agent_collection",
+                                 description="Name of the collection in vector store.")
 
-    # Exclude fields
-    embeddings_model: str | None = Field(default=None, exclude=True)
-    external_data_config_path: str | None = Field(default=None, exclude=True)
+
+class BaseChromaRetriever(BaseVectorStoreRetriever):
+    type: RetrieverType = RetrieverType.CHROMA_DB
+    tenant: str = Field(default="default_tenant", min_length=1)
+    database: str = Field(default="default_database", min_length=1)

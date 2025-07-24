@@ -12,3 +12,11 @@ class InvalidArgumentError(Exception):
     def __init__(self, reason: str, *args):
         self.reason = reason
         super().__init__(*args)
+
+
+class NotAcceptableError(Exception):
+    reason: str
+
+    def __init__(self, reason: str, *args):
+        self.reason = reason
+        super().__init__(*args)

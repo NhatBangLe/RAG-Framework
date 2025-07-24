@@ -2,8 +2,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
 
-from ...config.model.recognizer.image.preprocessing import ImageResizeConfiguration, ImageNormalizeConfiguration, \
-    ImageCenterCropConfiguration, ImagePadConfiguration, ImageGrayscaleConfiguration
+from ...config.model.recognizer.image.preprocessing import ImageResizeConfiguration, ImagePadConfiguration, \
+    ImageGrayscaleConfiguration
 
 
 class RecognizerType(str, Enum):
@@ -35,10 +35,8 @@ class OutputClass(BaseModel):
 
 class ImagePreprocessingType(str, Enum):
     RESIZE = "resize"
-    CENTER_CROP = "center_crop"
     PAD = "pad"
     GRAYSCALE = "grayscale"
-    NORMALIZE = "normalize"
 
 
 class BaseImagePreprocessing(BaseModel):
@@ -49,14 +47,6 @@ class ImageResize(BaseImagePreprocessing, ImageResizeConfiguration):
     type: ImagePreprocessingType = ImagePreprocessingType.RESIZE
 
 
-class ImageNormalize(BaseImagePreprocessing, ImageNormalizeConfiguration):
-    type: ImagePreprocessingType = ImagePreprocessingType.NORMALIZE
-
-
-class ImageCenterCrop(BaseImagePreprocessing, ImageCenterCropConfiguration):
-    type: ImagePreprocessingType = ImagePreprocessingType.CENTER_CROP
-
-
 class ImagePad(BaseImagePreprocessing, ImagePadConfiguration):
     type: ImagePreprocessingType = ImagePreprocessingType.PAD
 
@@ -65,7 +55,7 @@ class ImageGrayscale(BaseImagePreprocessing, ImageGrayscaleConfiguration):
     type: ImagePreprocessingType = ImagePreprocessingType.GRAYSCALE
 
 
-PreprocessingType = ImageResize | ImageNormalize | ImageCenterCrop | ImagePad | ImageGrayscale
+PreprocessingType = ImageResize | ImagePad | ImageGrayscale
 
 
 class BaseImageRecognizer(BaseRecognizer):
@@ -80,16 +70,6 @@ class BaseImageRecognizer(BaseRecognizer):
                 "interpolation": "bicubic",
                 "max_size": 512,
                 "antialias": True
-            },
-            {
-                "type": "normalize",
-                "mean": [0.485, 0.456, 0.406],
-                "std": [0.229, 0.224, 0.225],
-                "inplace": False
-            },
-            {
-                "type": "center_crop",
-                "size": [64, 64]
             },
             {
                 "type": "pad",

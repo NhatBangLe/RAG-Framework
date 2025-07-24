@@ -2,8 +2,6 @@ from pydantic import Field, BaseModel, field_validator
 
 from src.config.model import Configuration
 
-__all__ = ["RecognizerConfiguration", "image", "ClassDescriptor", "RecognizerOutput"]
-
 
 class RecognizerConfiguration(Configuration):
     """
@@ -18,9 +16,9 @@ class RecognizerConfiguration(Configuration):
 
 
 class ClassDescriptor(BaseModel):
-    name: str = Field(description="Name of data class", min_length=1)
+    name: str = Field(description="Name of data class", min_length=1, max_length=150)
     description: str = Field(description="Description for this class, use to search relevant information.",
-                             min_length=10)
+                             min_length=10, max_length=255)
 
 
 # noinspection PyNestedDecorators

@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from abc import ABC, abstractmethod
 from os import PathLike
 from pathlib import Path
@@ -13,7 +15,7 @@ from ...config.model.recognizer.image import ImageRecognizerConfiguration, Image
 from ...config.model.recognizer.image.preprocessing import ImageResizeConfiguration, ImageGrayscaleConfiguration, \
     ImageNormalizeConfiguration, ImageCenterCropConfiguration, ImagePadConfiguration
 from ...util import PagingParams, PagingWrapper
-from ...util.error import InvalidArgumentError
+from ...util.error import InvalidArgumentError, NotAcceptableError
 from ...util.function import strict_bson_id_parser
 
 
@@ -160,6 +162,8 @@ class IRecognizerService(ABC):
 
 
 class RecognizerServiceImpl(IRecognizerService):
+    _logger = logging.getLogger(__name__)
+
     def __init__(self, file_service: IFileService):
         self._collection_name = MongoCollection.RECOGNIZER
         self._file_service = file_service
@@ -257,4 +261,21 @@ class RecognizerServiceImpl(IRecognizerService):
 
     async def delete_model_by_id(self, model_id: str) -> None:
         valid_id = strict_bson_id_parser(model_id)
-        await delete_by_id(valid_id, self._collection_name)
+        doc = await get_by_id(valid_id, self._collection_name)
+        if doc is None:
+            return
+
+        # Check Agent using
+        collection = get_collection(MongoCollection.AGENT)
+        agent_using_doc = await collection.find_one({"image_recognizer_id": model_id})
+        if agent_using_doc is not None:
+            raise NotAcceptableError(f"Cannot delete recognizer with id {model_id}. "
+                                     f"Agent with id {agent_using_doc["_id"]} is still using it.")
+
+        try:
+            async with asyncio.TaskGroup() as tg:
+                tg.create_task(self._file_service.delete_file_by_id(doc["model_file_id"]))
+                tg.create_task(delete_by_id(valid_id, self._collection_name))
+        except ExceptionGroup as e:
+            self._logger.debug(e)
+            return

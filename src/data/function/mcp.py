@@ -115,7 +115,7 @@ class IMCPService(ABC):
 
 class MCPServiceImpl(IMCPService):
     def __init__(self):
-        self._collection_name = MongoCollection.MCP
+        self._collection_name = MongoCollection.MCP_SERVER
 
     async def get_all_models_with_paging(self, params, to_public):
         collection = get_collection(self._collection_name)

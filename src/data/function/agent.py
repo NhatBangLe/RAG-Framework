@@ -20,7 +20,10 @@ from ..dto.agent import AgentUpdate, AgentCreate, AgentPublic
 from ..model import Agent
 from ...config.model.mcp import MCPConnectionConfiguration, MCPConfiguration
 from ...config.model.retriever import RetrieverConfiguration
+from ...config.model.retriever.bm25 import BM25Configuration
+from ...config.model.retriever.vector_store import VectorStoreConfiguration
 from ...util import SecureDownloadGenerator, FileInformation, PagingParams, PagingWrapper, DEFAULT_CHARSET
+from ...util.constant import AgentEnvVar
 from ...util.error import NotFoundError
 from ...util.function import get_cache_dir_path, get_datetime_now, zip_folder, strict_bson_id_parser
 
@@ -147,6 +150,25 @@ class IAgentService(ABC):
         pass
 
 
+def _write_env_file(folder_for_exporting: Path, agent: AgentConfiguration):
+    env_file = folder_for_exporting.joinpath(".env")
+    env_set: set[str] = set()
+
+    for v in AgentEnvVar:
+        env_set.add(v.value)
+    env_set.add(agent.llm.get_api_key_env())
+    for retriever in agent.retrievers:
+        if isinstance(retriever, VectorStoreConfiguration):
+            env_set.add(retriever.embeddings_model.get_api_key_env())
+        elif isinstance(retriever, BM25Configuration):
+            env_set.add(retriever.embeddings_model.get_api_key_env())
+    if agent.tools is not None:
+        for tool in agent.tools:
+            env_set.add(tool.get_api_key_env())
+
+    env_file.write_text("=\n".join(filter(lambda value: value is not None, env_set)), encoding=DEFAULT_CHARSET)
+
+
 class AgentServiceImpl(IAgentService):
     _logger = logging.getLogger(__name__)
 
@@ -239,8 +261,9 @@ class AgentServiceImpl(IAgentService):
         }
         exported_file.unlink(missing_ok=True)
 
-        # Write a config.json file
+        # Write files
         config_obj = await self._get_agent_config(agent)
+        _write_env_file(folder_for_exporting, config_obj)
         config_dir = self.get_export_path(agent.id, "config")
         config_dir.joinpath("config.json").write_text(jsonpickle.encode(config_obj, indent=2), encoding=encoding)
 

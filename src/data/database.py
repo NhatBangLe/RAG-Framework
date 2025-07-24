@@ -1,10 +1,17 @@
+import asyncio
 import os
 from enum import Enum
 
 from bson import ObjectId
 from pydantic import BaseModel
 
-from ..util.constant import EnvVar
+from .model import Prompt, Agent
+from .model.chat_model import GoogleGenAIChatModel
+from .model.embeddings import GoogleGenAIEmbeddings
+from .model.retriever import ChromaRetriever, BM25Retriever
+from ..config.model.chat_model.google_genai import HarmCategory, HarmBlockThreshold
+from ..config.model.embeddings.google_genai import GoogleGenAIEmbeddingsTaskType
+from ..util.constant import EnvVar, DEFAULT_PROMPT
 from ..util.error import NotFoundError
 
 
@@ -14,7 +21,7 @@ class MongoCollection(str, Enum):
     RECOGNIZER = "recognizer"
     RETRIEVER = "retriever"
     EMBEDDINGS = "embeddings"
-    MCP = "mcp"
+    MCP_SERVER = "mcp_server"
     AGENT = "agent"
     FILE = "file"
 
@@ -118,3 +125,37 @@ async def delete_by_id(entity_id: ObjectId, collection: MongoCollection, not_fou
     if result.deleted_count == 0:
         msg = not_found_msg if not_found_msg is not None else f'No entity with id {entity_id} found.'
         raise NotFoundError(msg)
+
+
+async def insert_default_data():
+    id_dict = {
+        "prompt": ObjectId(),
+        "embedding_model": ObjectId(),
+        "chat_model": ObjectId(),
+        "chroma": ObjectId(),
+        "bm25": ObjectId(),
+    }
+    prompt = Prompt(_id=id_dict["prompt"], name="Default Prompt", respond_prompt=DEFAULT_PROMPT)
+    embedding_model = GoogleGenAIEmbeddings(_id=id_dict["vs_embedding_model"],
+                                            name="default_embeddings",
+                                            model_name="models/text-embedding-004",
+                                            task_type=GoogleGenAIEmbeddingsTaskType.RETRIEVAL_QUERY)
+    chat_model = GoogleGenAIChatModel(_id=id_dict["chat_model"],
+                                      model_name="gemini-2.0-flash",
+                                      safety_settings={
+                                          HarmCategory.DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                                          HarmCategory.HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                                          HarmCategory.VIOLENCE: HarmBlockThreshold.BLOCK_NONE,
+                                      })
+    vector_store = ChromaRetriever(_id=id_dict["chroma"], name="chroma_db", weight=0.6,
+                                   embeddings_id=str(id_dict["embedding_model"]))
+    bm25 = BM25Retriever(_id=id_dict["bm25"], name="bm25_db", weight=0.4,
+                         embeddings_id=str(id_dict["embedding_model"]))
+    agent = Agent()
+
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(create_document(chat_model, MongoCollection.CHAT_MODEL))
+        tg.create_task(create_document(embedding_model, MongoCollection.EMBEDDINGS))
+        tg.create_task(create_document(prompt, MongoCollection.PROMPT))
+        tg.create_task(create_document(vector_store, MongoCollection.RETRIEVER))
+        tg.create_task(create_document(bm25, MongoCollection.RETRIEVER))
