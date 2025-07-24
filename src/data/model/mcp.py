@@ -1,19 +1,17 @@
 from pydantic import Field, ConfigDict
 
 from .. import PyObjectId
-from ..base_model import BasePrompt, BaseAgent, BaseFile
+from ..base_model import BaseMCPStreamableServer, BaseMCPStdioServer
 
 
-class Agent(BaseAgent):
+class MCPStreamableServer(BaseMCPStreamableServer):
     id: PyObjectId | None = Field(alias="_id", exclude=True, default=None)
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
 
-class Prompt(BasePrompt):
+class MCPStdioServer(BaseMCPStdioServer):
     id: PyObjectId | None = Field(alias="_id", exclude=True, default=None)
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
 
-class File(BaseFile):
-    id: PyObjectId | None = Field(alias="_id", default=None)
-    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
+MCP = MCPStreamableServer | MCPStdioServer

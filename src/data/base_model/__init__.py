@@ -16,7 +16,7 @@ class BaseAgent(BaseModel):
     image_recognizer_id: str = Field(description="Image recognizer configuration ID", min_length=1)
     retriever_ids: list[str] = Field(description="Retriever configuration IDs", min_length=1)
     tool_ids: list[str] | None = Field(description="Tool configuration IDs", default=None)
-    mcp_id: str | None = Field(description="MCP configuration ID", default=None)
+    mcp_server_ids: list[str] | None = Field(description="MCP configuration IDs", default=None, min_length=1)
     llm_id: str = Field(description="Chat model configuration ID")
     prompt_id: str = Field(description="Prompt configuration ID")
 
@@ -36,19 +36,12 @@ class BaseMCPServer(BaseModel):
     name: str = Field(description="Name of the server.", min_length=1)
 
 
-class MCPStreamableServer(BaseMCPServer, StreamableConnectionConfiguration):
+class BaseMCPStreamableServer(BaseMCPServer, StreamableConnectionConfiguration):
     pass
 
 
-class MCPStdioServer(BaseMCPServer, StdioConnectionConfiguration):
+class BaseMCPStdioServer(BaseMCPServer, StdioConnectionConfiguration):
     pass
-
-
-SupportedMCPConfiguration = MCPStreamableServer | MCPStdioServer
-
-
-class BaseMCP(BaseModel):
-    servers: list[SupportedMCPConfiguration] = Field(min_length=1)
 
 
 class BaseFile(BaseModel):

@@ -17,49 +17,24 @@ router = APIRouter(
 
 MCPCreateBody = Annotated[MCPCreate, Body(
     examples=[{
-        "servers": [
-            {
-                "name": "example_streamable_server",
-                "type": "streamable_http",
-                "url": "https://api.example.com/stream",
-                "headers": {
-                    "Authorization": "Bearer your_token_here",
-                    "Content-Type": "application/json"
-                },
-                "timeout": 60,
-                "sse_read_timeout": 300,
-                "terminate_on_close": True
-            },
-            {
-                "name": "another_streamable_server",
-                "transport": "streamable_http",
-                "type": "streamable_http",
-                "url": "https://another.example.com/data",
-                "timeout": 90
-            }
-        ]
+        "name": "a_streamable_server",
+        "transport": "streamable_http",
+        "type": "streamable_http",
+        "url": "https://api.example.com/stream",
+        "timeout": 60,
+        "sse_read_timeout": 300,
+        "terminate_on_close": True
     }]
 )]
 MCPUpdateBody = Annotated[MCPUpdate, Body(
     examples=[{
-        "servers": [
-            {
-                "name": "a_streamable_server",
-                "transport": "streamable_http",
-                "type": "streamable_http",
-                "url": "https://api.example.com/stream",
-                "timeout": 60,
-                "sse_read_timeout": 300,
-                "terminate_on_close": True
-            },
-            {
-                "name": "another_streamable_server",
-                "transport": "streamable_http",
-                "type": "streamable_http",
-                "url": "https://another.example.com/data",
-                "timeout": 90
-            }
-        ]
+        "name": "a_streamable_server",
+        "transport": "streamable_http",
+        "type": "streamable_http",
+        "url": "https://api.example.com/stream",
+        "timeout": 60,
+        "sse_read_timeout": 300,
+        "terminate_on_close": True
     }]
 )]
 
@@ -67,7 +42,7 @@ MCPUpdateBody = Annotated[MCPUpdate, Body(
 @router.get(
     path="/all",
     description="Get MCP entities.",
-    response_model=PagingWrapper[MCPPublic],
+    response_model=PagingWrapper,
     status_code=status.HTTP_200_OK)
 async def get_all_mcp_configs(params: PagingQuery, service: MCPServiceDepend):
     return await service.get_all_models_with_paging(params, True)

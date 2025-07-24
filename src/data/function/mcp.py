@@ -2,12 +2,14 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from ..database import get_by_id, MongoCollection, update_by_id, delete_by_id, get_collection, create_document
-from ..dto.mcp import MCPUpdate, MCPCreate, MCPPublic
-from ..model import MCP
-from ...config.model.mcp import MCPConfiguration, MCPConnectionConfiguration
+from ..dto.mcp import MCPUpdate, MCPCreate, MCPPublic, MCPStreamableServerPublic, MCPStdioServerPublic
+from ..model.mcp import MCP
+from ...config.model.mcp import MCPConnectionConfiguration, MCPTransport, \
+    StreamableConnectionConfiguration, StdioConnectionConfiguration
 from ...util import PagingWrapper, PagingParams
 
 
+# noinspection PyTypeHints
 class IMCPService(ABC):
 
     @abstractmethod
@@ -42,7 +44,7 @@ class IMCPService(ABC):
         pass
 
     @abstractmethod
-    async def get_configuration_by_id(self, model_id: str) -> MCPConfiguration:
+    async def get_configuration_by_id(self, model_id: str) -> MCPConnectionConfiguration:
         """
         Retrieves an MCP configuration by its ID and transforms it into a
         structured MCPConfiguration object with connections.
@@ -126,10 +128,13 @@ class MCPServiceImpl(IMCPService):
 
     async def get_configuration_by_id(self, model_id):
         doc_mcp = await self.get_model_by_id(model_id)
-        connections: dict[str, MCPConnectionConfiguration] = {}
-        for server in doc_mcp.servers:
-            connections[server.name] = MCPConnectionConfiguration.model_validate(server.model_dump())
-        return MCPConfiguration.model_validate({connections})
+        dict_value = doc_mcp.model_dump()
+        if doc_mcp.type == MCPTransport.STREAMABLE_HTTP:
+            return StreamableConnectionConfiguration.model_validate(dict_value)
+        elif doc_mcp.type == MCPTransport.STDIO:
+            return StdioConnectionConfiguration.model_validate(dict_value)
+        else:
+            raise ValueError(f'MCP transport type {doc_mcp.type} is not supported.')
 
     @staticmethod
     def convert_dict_to_model(data):
@@ -137,7 +142,13 @@ class MCPServiceImpl(IMCPService):
 
     @staticmethod
     def convert_dict_to_public(data):
-        return MCPPublic.model_validate(data)
+        data_type = data["type"]
+        if data_type == MCPTransport.STREAMABLE_HTTP.value:
+            return MCPStreamableServerPublic.model_validate(data)
+        elif data_type == MCPTransport.STDIO.value:
+            return MCPStdioServerPublic.model_validate(data)
+        else:
+            raise ValueError(f"Unsupported MCP transport type: {data_type}")
 
     async def create_new(self, data):
         return await create_document(data, self._collection_name)

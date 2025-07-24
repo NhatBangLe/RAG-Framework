@@ -1,6 +1,5 @@
 from enum import Enum
 
-from langchain_google_genai import HarmCategory as GenAIHarmCategory, HarmBlockThreshold as GenAIHarmBlockThreshold
 from pydantic import Field
 
 from ..chat_model import ChatModelConfiguration, ChatModelType
@@ -28,38 +27,6 @@ class HarmBlockThreshold(str, Enum):
     BLOCK_ONLY_HIGH = "BLOCK_ONLY_HIGH"
     BLOCK_NONE = "BLOCK_NONE"
     OFF = "OFF"
-
-
-HARM_CATEGORY_DICT = {
-    "UNSPECIFIED": GenAIHarmCategory.HARM_CATEGORY_UNSPECIFIED,
-    "DEROGATORY": GenAIHarmCategory.HARM_CATEGORY_DEROGATORY,
-    "TOXICITY": GenAIHarmCategory.HARM_CATEGORY_TOXICITY,
-    "VIOLENCE": GenAIHarmCategory.HARM_CATEGORY_VIOLENCE,
-    "SEXUAL": GenAIHarmCategory.HARM_CATEGORY_SEXUAL,
-    "MEDICAL": GenAIHarmCategory.HARM_CATEGORY_MEDICAL,
-    "DANGEROUS": GenAIHarmCategory.HARM_CATEGORY_DANGEROUS,
-    "HARASSMENT": GenAIHarmCategory.HARM_CATEGORY_HARASSMENT,
-    "HATE_SPEECH": GenAIHarmCategory.HARM_CATEGORY_HATE_SPEECH,
-    "SEXUALLY_EXPLICIT": GenAIHarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-    "DANGEROUS_CONTENT": GenAIHarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-    "CIVIC_INTEGRITY": GenAIHarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
-}
-
-HARM_BLOCK_THRESHOLD_DICT = {
-    "UNSPECIFIED": GenAIHarmBlockThreshold.HARM_BLOCK_THRESHOLD_UNSPECIFIED,
-    "BLOCK_LOW_AND_ABOVE": GenAIHarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-    "BLOCK_MEDIUM_AND_ABOVE": GenAIHarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    "BLOCK_ONLY_HIGH": GenAIHarmBlockThreshold.BLOCK_ONLY_HIGH,
-    "BLOCK_NONE": GenAIHarmBlockThreshold.BLOCK_NONE,
-    "OFF": GenAIHarmBlockThreshold.OFF,
-}
-
-
-def convert_safety_settings_to_genai(settings: dict[str, str]):
-    result: dict[GenAIHarmCategory, GenAIHarmBlockThreshold] = {}
-    for k, v in settings.items():
-        result[HARM_CATEGORY_DICT[k]] = HARM_BLOCK_THRESHOLD_DICT[v]
-    return result
 
 
 class GoogleGenAIChatModelConfiguration(ChatModelConfiguration):

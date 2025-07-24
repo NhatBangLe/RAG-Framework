@@ -14,9 +14,11 @@ from .mcp import IMCPService
 from .prompt import IPromptService
 from .recognizer import IRecognizerService
 from .retriever import IRetrieverService
+from ..base_model import BaseMCPServer
 from ..database import get_by_id, MongoCollection, update_by_id, create_document, delete_by_id, get_collection
 from ..dto.agent import AgentUpdate, AgentCreate, AgentPublic
 from ..model import Agent
+from ...config.model.mcp import MCPConnectionConfiguration, MCPConfiguration
 from ...config.model.retriever import RetrieverConfiguration
 from ...util import SecureDownloadGenerator, FileInformation, PagingParams, PagingWrapper, DEFAULT_CHARSET
 from ...util.function import get_cache_dir_path, get_datetime_now, zip_folder
@@ -285,12 +287,12 @@ class AgentServiceImpl(IAgentService):
                 export_dir = self.get_export_path(agent.id, "recognizer")
                 task_dict["image_recognizer"] = tg.create_task(
                     self._recognizer_service.get_configuration_by_id(rec_id, export_dir))
-            if agent.retriever_ids and len(agent.retriever_ids) > 0:
+            if agent.vector_store_ids and len(agent.vector_store_ids) > 0:
                 async def get_retrievers() -> list[RetrieverConfiguration]:
                     tasks: list[asyncio.Task] = []
                     retriever_export_dir = self.get_export_path(agent.id, "retriever")
                     async with asyncio.TaskGroup() as group:
-                        for retriever_id in agent.retriever_ids:
+                        for retriever_id in agent.vector_store_ids:
                             task = group.create_task(
                                 self._retriever_service.get_configuration_by_id(retriever_id, retriever_export_dir))
                             tasks.append(task)
@@ -300,7 +302,21 @@ class AgentServiceImpl(IAgentService):
             # if agent.tool_ids and len(agent.tool_ids) > 0:
             #     task_dict["tools"] = ""
             if agent.mcp_id:
-                task_dict["mcp"] = tg.create_task(self._mcp_service.get_configuration_by_id(agent.mcp_id))
+                async def get_mcp_configuration():
+                    tasks: list[tuple[asyncio.Task, asyncio.Task]] = []
+                    async with asyncio.TaskGroup() as group:
+                        for server_id in agent.mcp_server_ids:
+                            metadata_task = group.create_task(self._mcp_service.get_model_by_id(server_id))
+                            config_task = group.create_task(self._mcp_service.get_configuration_by_id(server_id))
+                            tasks.append((metadata_task, config_task))
+                    servers: dict[str, MCPConnectionConfiguration] = {}
+                    for metadata_task, config_task in tasks:
+                        metadata: BaseMCPServer = metadata_task.result()
+                        config = config_task.result()
+                        servers[metadata.name] = config
+                    return MCPConfiguration(connections=servers)
+
+                task_dict["mcp"] = tg.create_task(get_mcp_configuration())
             task_dict["llm"] = tg.create_task(self._chat_model_service.get_configuration_by_id(agent.llm_id))
             task_dict["prompt"] = tg.create_task(self._prompt_service.get_configuration_by_id(agent.prompt_id))
 

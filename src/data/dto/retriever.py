@@ -30,6 +30,10 @@ class ChromaRetrieverPublic(BaseChromaRetriever):
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
 
-RetrieverCreate = BM25RetrieverCreate | ChromaRetrieverCreate
-RetrieverUpdate = BM25RetrieverUpdate | ChromaRetrieverUpdate
-RetrieverPublic = BM25RetrieverPublic | ChromaRetrieverPublic
+RetrieverCreate = BM25RetrieverCreate
+RetrieverUpdate = BM25RetrieverUpdate
+RetrieverPublic = BM25RetrieverPublic
+
+VectorStoreCreate = ChromaRetrieverCreate
+VectorStoreUpdate = ChromaRetrieverUpdate
+VectorStorePublic = ChromaRetrieverPublic
