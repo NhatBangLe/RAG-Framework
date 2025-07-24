@@ -8,7 +8,7 @@ from .file import IFileService
 from ..base_model.retriever import BaseRetriever, RetrieverType
 from ..database import get_by_id, MongoCollection, update_by_id, delete_by_id, get_collection, create_document
 from ..dto.retriever import RetrieverUpdate, RetrieverCreate, RetrieverPublic, BM25RetrieverPublic, \
-    ChromaRetrieverPublic
+    ChromaRetrieverPublic, VectorStorePublic
 from ..model.retriever import Retriever, BM25Retriever, ChromaRetriever
 from ...config.model.data import ExternalDocumentConfiguration, ExternalDocument
 from ...config.model.retriever import RetrieverConfiguration
@@ -216,7 +216,7 @@ class RetrieverServiceImpl(IRetrieverService):
             raise InvalidArgumentError(f'Retriever type {base_retriever.type} is not supported.')
 
     @staticmethod
-    def convert_dict_to_public(data: dict[str, Any]) -> RetrieverPublic:
+    def convert_dict_to_public(data: dict[str, Any]) -> VectorStorePublic | RetrieverPublic:
         data_type = data["type"]
         if data_type == RetrieverType.BM25.value:
             return BM25RetrieverPublic.model_validate(data)
