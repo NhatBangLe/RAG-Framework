@@ -157,11 +157,12 @@ def _write_env_file(folder_for_exporting: Path, agent: AgentConfiguration):
     for v in AgentEnvVar:
         env_set.add(v.value)
     env_set.add(agent.llm.get_api_key_env())
-    for retriever in agent.retrievers:
-        if isinstance(retriever, VectorStoreConfiguration):
-            env_set.add(retriever.embeddings_model.get_api_key_env())
-        elif isinstance(retriever, BM25Configuration):
-            env_set.add(retriever.embeddings_model.get_api_key_env())
+    if agent.retriever is not None:
+        for retriever in agent.retrievers:
+            if isinstance(retriever, VectorStoreConfiguration):
+                env_set.add(retriever.embeddings_model.get_api_key_env())
+            elif isinstance(retriever, BM25Configuration):
+                env_set.add(retriever.embeddings_model.get_api_key_env())
     if agent.tools is not None:
         for tool in agent.tools:
             env_set.add(tool.get_api_key_env())

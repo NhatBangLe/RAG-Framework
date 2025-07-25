@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from pymongo.asynchronous.collection import AsyncCollection
 
 from src.util.constant import DEFAULT_CHARSET, DEFAULT_TOKEN_SEPARATOR
+from src.util.error import InvalidArgumentError
 
 
 class FileInformation(TypedDict):
@@ -54,7 +55,10 @@ class SecureDownloadGenerator:
     def verify_token(self, token: str) -> FileInformation | None:
         """Verify a download token and return a file id."""
         # Decode base64
-        token_data: str = base64.urlsafe_b64decode(token.encode(DEFAULT_CHARSET)).decode(DEFAULT_CHARSET)
+        try:
+            token_data: str = base64.urlsafe_b64decode(token.encode(DEFAULT_CHARSET)).decode(DEFAULT_CHARSET)
+        except Exception:
+            raise InvalidArgumentError("Invalid token")
 
         # Split token parts
         parts: list[str] = token_data.split(DEFAULT_TOKEN_SEPARATOR)
