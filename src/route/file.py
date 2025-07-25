@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status, UploadFile
 
 from ..data.dto import FilePublic
-from ..dependency import FileServiceDepend
+from ..dependency import FileServiceDepend, DownloadGeneratorDep
 
 router = APIRouter(
     prefix="/api/v1/file",
@@ -20,6 +20,14 @@ router = APIRouter(
     status_code=status.HTTP_200_OK)
 async def get_file_metadata(file_id: str, service: FileServiceDepend):
     return await service.get_file_by_id(file_id)
+
+
+@router.get(
+    path="/{file_id}/token",
+    description="Get a file by its ID.",
+    status_code=status.HTTP_200_OK)
+async def get_download_token(file_id: str, service: FileServiceDepend, generator: DownloadGeneratorDep) -> str:
+    return await service.get_download_token(file_id, generator)
 
 
 @router.post(

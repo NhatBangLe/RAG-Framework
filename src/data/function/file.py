@@ -8,6 +8,7 @@ from fastapi import UploadFile
 
 from ..database import get_by_id, MongoCollection, create_document, delete_by_id
 from ..model import File
+from ...util import SecureDownloadGenerator
 from ...util.constant import EnvVar
 from ...util.function import strict_bson_id_parser
 
@@ -28,6 +29,10 @@ class IFileService(ABC):
         Raises:
             NotFoundError: If no file with the given ID is found.
         """
+        pass
+
+    @abstractmethod
+    async def get_download_token(self, file_id: str, generator: SecureDownloadGenerator) -> str:
         pass
 
     @abstractmethod
@@ -66,6 +71,14 @@ class FileServiceImpl(IFileService):
         not_found_msg = f'No file with id {file_id} found.'
         doc = await get_by_id(valid_id, self._collection_name, not_found_msg)
         return File.model_validate(doc)
+
+    async def get_download_token(self, file_id, generator):
+        file = await self.get_file_by_id(file_id)
+        return generator.generate_token({
+            "name": file.name,
+            "mime_type": str(file.mime_type),
+            "path": file.path,
+        })
 
     async def save_file(self, file):
         save_dir = Path(os.getenv(EnvVar.LOCAL_FILE_DIR.value, "/app/local"))
