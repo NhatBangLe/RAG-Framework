@@ -68,11 +68,13 @@ class FileServiceImpl(IFileService):
         return File.model_validate(doc)
 
     async def save_file(self, file):
-        save_path = Path(os.getenv(EnvVar.LOCAL_FILE_DIR.value, "/app/local"), str(uuid4()))
+        save_dir = Path(os.getenv(EnvVar.LOCAL_FILE_DIR.value, "/app/local"))
+        save_path = save_dir.joinpath(str(uuid4()))
         file_record = File(name=file.filename, mime_type=file.content_type, path=str(save_path))
         async with asyncio.TaskGroup() as tg:
             content_task = tg.create_task(file.read())
             save_record_task = tg.create_task(create_document(file_record, self._collection_name))
+        save_dir.mkdir(parents=True, exist_ok=True)
         save_path.write_bytes(content_task.result())
         return save_record_task.result()
 
