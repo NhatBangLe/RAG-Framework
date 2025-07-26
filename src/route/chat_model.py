@@ -19,7 +19,7 @@ router = APIRouter(
 )
 
 ChatModelCreateBody = Annotated[ChatModelCreate, Body(
-    example={
+    examples=[{
         "model_name": "gemini-2.0-flash",
         "temperature": 0.5,
         "max_tokens": 1024,
@@ -33,10 +33,10 @@ ChatModelCreateBody = Annotated[ChatModelCreate, Body(
             "HARASSMENT": "BLOCK_LOW_AND_ABOVE",
             "SEXUALLY_EXPLICIT": "BLOCK_NONE"
         }
-    }
+    }]
 )]
 ChatModelUpdateBody = Annotated[ChatModelUpdate, Body(
-    example={
+    examples=[{
         "model_name": "gemini-2.0-flash",
         "temperature": 0.5,
         "max_tokens": 1024,
@@ -50,7 +50,7 @@ ChatModelUpdateBody = Annotated[ChatModelUpdate, Body(
             "HARASSMENT": "BLOCK_LOW_AND_ABOVE",
             "SEXUALLY_EXPLICIT": "BLOCK_NONE"
         }
-    }
+    }]
 )]
 
 
