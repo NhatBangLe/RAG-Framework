@@ -1,8 +1,7 @@
 from typing import Annotated
 
-from fastapi import APIRouter
+from fastapi import APIRouter, status
 from fastapi.params import Body
-from starlette import status
 
 from ..data.dto.chat_model import ChatModelCreate, ChatModelUpdate, \
     ChatModelPublic
