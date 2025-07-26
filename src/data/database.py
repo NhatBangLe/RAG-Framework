@@ -24,6 +24,7 @@ class MongoCollection(str, Enum):
     MCP_SERVER = "mcp_server"
     AGENT = "agent"
     FILE = "file"
+    TOOL = "tool"
 
 
 def get_database():

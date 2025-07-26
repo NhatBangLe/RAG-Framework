@@ -13,6 +13,7 @@ from .data.function.mcp import IMCPService, MCPServiceImpl
 from .data.function.prompt import IPromptService, PromptServiceImpl
 from .data.function.recognizer import IRecognizerService, RecognizerServiceImpl
 from .data.function.retriever import IRetrieverService, RetrieverServiceImpl
+from .data.function.tool import IToolService, ToolServiceImpl
 from .util import SecureDownloadGenerator, PagingParams
 from .util.constant import EnvVar
 
@@ -42,6 +43,10 @@ def provide_embeddings_service() -> IEmbeddingsService:
     return EmbeddingsServiceImpl()
 
 
+def provide_tool_service() -> IToolService:
+    return ToolServiceImpl()
+
+
 def provide_recognizer_service(file_service: "FileServiceDepend") -> IRecognizerService:
     return RecognizerServiceImpl(file_service)
 
@@ -67,6 +72,7 @@ FileServiceDepend = Annotated[IFileService, Depends(provide_file_service)]
 PromptServiceDepend = Annotated[IPromptService, Depends(provide_prompt_service)]
 MCPServiceDepend = Annotated[IMCPService, Depends(provide_mcp_service)]
 EmbeddingsServiceDepend = Annotated[IEmbeddingsService, Depends(provide_embeddings_service)]
+ToolServiceDepend = Annotated[IToolService, Depends(provide_tool_service)]
 RecognizerServiceDepend = Annotated[IRecognizerService, Depends(provide_recognizer_service)]
 RetrieverServiceDepend = Annotated[IRetrieverService, Depends(provide_retriever_service)]
 AgentServiceDepend = Annotated[IAgentService, Depends(provide_agent_service)]

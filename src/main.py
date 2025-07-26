@@ -21,6 +21,7 @@ from src.route.mcp import router as mcp_router
 from src.route.prompt import router as prompt_router
 from src.route.recognizer import router as recognizer_router
 from src.route.retriever import router as retriever_router
+from src.route.tool import router as tool_router
 from src.util.constant import EnvVar
 from src.util.error import NotFoundError, InvalidArgumentError, NotAcceptableError
 
@@ -84,6 +85,7 @@ app.include_router(recognizer_router)
 app.include_router(mcp_router)
 app.include_router(agent_router)
 app.include_router(file_router)
+app.include_router(tool_router)
 
 
 # Global routes
