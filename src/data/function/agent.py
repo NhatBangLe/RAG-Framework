@@ -157,7 +157,7 @@ def _write_env_file(folder_for_exporting: Path, agent: AgentConfiguration):
     for v in AgentEnvVar:
         env_set.add(v.value)
     env_set.add(agent.llm.get_api_key_env())
-    if agent.retriever is not None:
+    if agent.retrievers is not None:
         for retriever in agent.retrievers:
             if isinstance(retriever, VectorStoreConfiguration):
                 env_set.add(retriever.embeddings_model.get_api_key_env())
@@ -167,7 +167,8 @@ def _write_env_file(folder_for_exporting: Path, agent: AgentConfiguration):
         for tool in agent.tools:
             env_set.add(tool.get_api_key_env())
 
-    env_file.write_text("=\n".join(filter(lambda value: value is not None, env_set)), encoding=DEFAULT_CHARSET)
+    text = "=\n".join(filter(lambda value: value is not None, env_set)) + "="
+    env_file.write_text(text, encoding=DEFAULT_CHARSET)
 
 
 class AgentServiceImpl(IAgentService):
@@ -276,7 +277,8 @@ class AgentServiceImpl(IAgentService):
     async def _check_entities_exists(self, model: Agent):
         try:
             async with asyncio.TaskGroup() as tg:
-                tg.create_task(self._recognizer_service.get_model_by_id(model.image_recognizer_id))
+                if model.image_recognizer_id is not None:
+                    tg.create_task(self._recognizer_service.get_model_by_id(model.image_recognizer_id))
                 tg.create_task(self._chat_model_service.get_model_by_id(model.llm_id))
                 tg.create_task(self._prompt_service.get_model_by_id(model.prompt_id))
                 if model.retriever_ids is not None:

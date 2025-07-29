@@ -22,8 +22,8 @@ AgentCreateBody = Annotated[AgentCreate, Body(
         "language": "vi",
         "image_recognizer_id": "186003f271e4995bcb0c2d0f",
         "retriever_ids": ["686003f271e4995bcb0c2d0f"],
-        "tool_ids": None,
-        "mcp_id": None,
+        "tool_ids": ["6886f26bc7b59ad39ab42e68"],
+        "mcp_server_ids": ["6886f26bc7b59ad39ab42e68"],
         "llm_id": "686003f271e4995bcb0c2d0a",
         "prompt_id": "686003f271e4995bcb0c2e0f"
     }]
@@ -42,7 +42,7 @@ AgentUpdateBody = Annotated[AgentUpdate, Body(
             "a86003f271e4995bcb0c2d0f",
             "686003f271e4995bcb0c2d0e"
         ],
-        "mcp_id": "686003f271e4995bcb0c2d0b",
+        "mcp_server_ids": ["6886f26bc7b59ad39ab42e68"],
         "llm_id": "686003f271e4995bcb0c2d0a",
         "prompt_id": "686003f271e4995bcb0c2e0f"
     }]

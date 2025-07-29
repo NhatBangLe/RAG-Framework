@@ -53,6 +53,7 @@ def setup_event_loop():
 load_dotenv()
 setup_event_loop()
 setup_logging()
+logger = logging.getLogger(__name__)
 
 # Create a new client and connect to the server
 mongodb_client = AsyncMongoClient(os.getenv(EnvVar.DB_URI.value), server_api=ServerApi('1'))
@@ -61,12 +62,21 @@ mongodb_client = AsyncMongoClient(os.getenv(EnvVar.DB_URI.value), server_api=Ser
 # noinspection PyUnusedLocal
 @asynccontextmanager
 async def lifespan(app_inst: FastAPI):
+    logger.info("Connecting to database...")
     await mongodb_client.aconnect()
-    await insert_default_data()
+    logger.info("Database connection established. Starting up the application...")
+
+    is_create_default_data = os.getenv(EnvVar.CREATE_DEFAULT_ENTITIES.value, "False")
+    if is_create_default_data in ["True", "true"]:
+        logger.info("Creating default entities...")
+        await insert_default_data()
+        logger.info("Default entities have been created successfully.")
 
     yield
 
+    logger.info("Closing database connection...")
     await mongodb_client.close()
+    logger.info("Good bye!")
 
 
 app = FastAPI(lifespan=lifespan)

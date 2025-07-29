@@ -30,6 +30,7 @@ class EnvVar(str, Enum):
     DOWNLOAD_SECURE_KEY = "DOWNLOAD_SECURE_KEY"
     DB_URI = "MONGODB_URI"
     DB_NAME = "MONGODB_DATABASE"
+    CREATE_DEFAULT_ENTITIES = "CREATE_DEFAULT_ENTITIES"
 
 
 DEFAULT_PROMPT = ("You are an intelligent assistant designed to answer user questions comprehensively and accurately. "

@@ -18,9 +18,8 @@ router = APIRouter(
 MCPCreateBody = Annotated[MCPCreate, Body(
     examples=[{
         "name": "a_streamable_server",
-        "transport": "streamable_http",
         "type": "streamable_http",
-        "url": "https://api.example.com/stream",
+        "url": "https://api.example.com/mcp",
         "timeout": 60,
         "sse_read_timeout": 300,
         "terminate_on_close": True
@@ -29,9 +28,8 @@ MCPCreateBody = Annotated[MCPCreate, Body(
 MCPUpdateBody = Annotated[MCPUpdate, Body(
     examples=[{
         "name": "a_streamable_server",
-        "transport": "streamable_http",
         "type": "streamable_http",
-        "url": "https://api.example.com/stream",
+        "url": "https://api.example.com/mcp",
         "timeout": 60,
         "sse_read_timeout": 300,
         "terminate_on_close": True

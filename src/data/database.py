@@ -20,8 +20,8 @@ class MongoCollection(str, Enum):
     PROMPT = "prompt"
     RECOGNIZER = "recognizer"
     RETRIEVER = "retriever"
-    EMBEDDINGS = "embeddings"
-    MCP_SERVER = "mcp_server"
+    EMBEDDINGS = "embedding_model"
+    MCP_SERVER = "mcp"
     AGENT = "agent"
     FILE = "file"
     TOOL = "tool"
@@ -129,33 +129,27 @@ async def delete_by_id(entity_id: ObjectId, collection: MongoCollection, not_fou
 
 
 async def insert_default_data():
-    id_dict = {
-        "prompt": ObjectId(),
-        "embedding_model": ObjectId(),
-        "chat_model": ObjectId(),
-        "chroma": ObjectId(),
-        "bm25": ObjectId(),
-    }
-    prompt = Prompt(_id=id_dict["prompt"], name="Default Prompt", respond_prompt=DEFAULT_PROMPT)
-    embedding_model = GoogleGenAIEmbeddings(_id=id_dict["embedding_model"],
-                                            name="default_embeddings",
+    prompt = Prompt(name="Default Prompt", respond_prompt=DEFAULT_PROMPT)
+    embedding_model = GoogleGenAIEmbeddings(name="default_embeddings",
                                             model_name="models/text-embedding-004",
                                             task_type=GoogleGenAIEmbeddingsTaskType.RETRIEVAL_QUERY)
-    chat_model = GoogleGenAIChatModel(_id=id_dict["chat_model"],
-                                      model_name="gemini-2.0-flash",
+    chat_model = GoogleGenAIChatModel(model_name="gemini-2.0-flash",
                                       safety_settings={
                                           HarmCategory.DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
                                           HarmCategory.HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
                                           HarmCategory.VIOLENCE: HarmBlockThreshold.BLOCK_NONE,
                                       })
-    vector_store = ChromaRetriever(_id=id_dict["chroma"], name="chroma_db", weight=0.6,
-                                   embeddings_id=str(id_dict["embedding_model"]))
-    bm25 = BM25Retriever(_id=id_dict["bm25"], name="default_bm25_retriever", weight=0.4,
-                         embeddings_id=str(id_dict["embedding_model"]))
 
     async with asyncio.TaskGroup() as tg:
         tg.create_task(create_document(chat_model, MongoCollection.CHAT_MODEL))
-        tg.create_task(create_document(embedding_model, MongoCollection.EMBEDDINGS))
         tg.create_task(create_document(prompt, MongoCollection.PROMPT))
+        create_embed_task = tg.create_task(create_document(embedding_model, MongoCollection.EMBEDDINGS))
+
+    embedding_model_id = create_embed_task.result()
+    vector_store = ChromaRetriever(name="chroma_db", weight=0.6,
+                                   embeddings_id=str(embedding_model_id))
+    bm25 = BM25Retriever(name="default_bm25_retriever", weight=0.4,
+                         embeddings_id=str(embedding_model_id))
+    async with asyncio.TaskGroup() as tg:
         tg.create_task(create_document(vector_store, MongoCollection.RETRIEVER))
         tg.create_task(create_document(bm25, MongoCollection.RETRIEVER))

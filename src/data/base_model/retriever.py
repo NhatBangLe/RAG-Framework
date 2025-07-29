@@ -2,6 +2,7 @@ from enum import Enum
 
 from pydantic import Field, field_validator, BaseModel
 
+from ...config.model.data import ExternalDocument
 from ...config.model.retriever.vector_store import VectorStoreConfigurationMode, VectorStoreConnection
 
 
@@ -37,13 +38,14 @@ class BaseBM25Retriever(BaseRetriever):
 class BaseVectorStoreRetriever(BaseRetriever):
     mode: VectorStoreConfigurationMode = Field(default="persistent")
     embeddings_id: str = Field(description="ID of the configured embeddings model.")
-    connection: VectorStoreConnection | None = Field(
-        default=None, description="Connection will be used if the mode value is remote")
-    collection_name: str = Field(default="agent_collection",
-                                 description="Name of the collection in vector store.")
+    external_data: list[ExternalDocument] | None = Field(default=None)
 
 
 class BaseChromaRetriever(BaseVectorStoreRetriever):
     type: RetrieverType = RetrieverType.CHROMA_DB
     tenant: str = Field(default="default_tenant", min_length=1)
     database: str = Field(default="default_database", min_length=1)
+    connection: VectorStoreConnection | None = Field(
+        default=None, description="Connection will be used if the mode value is remote")
+    collection_name: str = Field(default="agent_collection",
+                                 description="Name of the collection in vector store.")
