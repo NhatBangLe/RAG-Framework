@@ -7,7 +7,15 @@ from ...config.model.chat_model.ollama import OllamaChatModelConfiguration
 
 # noinspection PyNestedDecorators
 class BaseChatModel(BaseModel):
+    name: str = Field(min_length=1, max_length=150)
     model_name: str = Field(min_length=1, max_length=100)
+
+    @field_validator("name", mode="after")
+    @classmethod
+    def validate_name(cls, name: str):
+        if len(name.strip()) == 0:
+            raise ValueError(f'name cannot be blank.')
+        return name
 
     @field_validator("model_name", mode="after")
     @classmethod

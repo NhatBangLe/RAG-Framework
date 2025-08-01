@@ -133,7 +133,8 @@ async def insert_default_data():
     embedding_model = GoogleGenAIEmbeddings(name="default_embeddings",
                                             model_name="models/text-embedding-004",
                                             task_type=GoogleGenAIEmbeddingsTaskType.RETRIEVAL_QUERY)
-    chat_model = GoogleGenAIChatModel(model_name="gemini-2.0-flash",
+    chat_model = GoogleGenAIChatModel(name="default_chat_model",
+                                      model_name="gemini-2.0-flash",
                                       safety_settings={
                                           HarmCategory.DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
                                           HarmCategory.HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
