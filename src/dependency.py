@@ -61,9 +61,10 @@ def provide_agent_service(chat_model_service: "ChatModelServiceDepend",
                           recognizer_service: "RecognizerServiceDepend",
                           prompt_service: "PromptServiceDepend",
                           embeddings_service: "EmbeddingsServiceDepend",
-                          retriever_service: "RetrieverServiceDepend") -> IAgentService:
+                          retriever_service: "RetrieverServiceDepend",
+                          tool_service: "ToolServiceDepend") -> IAgentService:
     return AgentServiceImpl(chat_model_service, mcp_service, recognizer_service,
-                            prompt_service, embeddings_service, retriever_service)
+                            prompt_service, embeddings_service, retriever_service, tool_service)
 
 
 # Services

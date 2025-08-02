@@ -14,6 +14,7 @@ from .mcp import IMCPService
 from .prompt import IPromptService
 from .recognizer import IRecognizerService
 from .retriever import IRetrieverService
+from .tool import IToolService
 from ..base_model import BaseMCPServer
 from ..database import get_by_id, MongoCollection, update_by_id, create_document, delete_by_id, get_collection
 from ..dto.agent import AgentUpdate, AgentCreate, AgentPublic
@@ -22,6 +23,7 @@ from ...config.model.mcp import MCPConnectionConfiguration, MCPConfiguration
 from ...config.model.retriever import RetrieverConfiguration
 from ...config.model.retriever.bm25 import BM25Configuration
 from ...config.model.retriever.vector_store import VectorStoreConfiguration
+from ...config.model.tool import ToolConfiguration
 from ...util import SecureDownloadGenerator, FileInformation, PagingParams, PagingWrapper, DEFAULT_CHARSET
 from ...util.constant import AgentEnvVar
 from ...util.error import NotFoundError
@@ -180,13 +182,15 @@ class AgentServiceImpl(IAgentService):
                  recognizer_service: IRecognizerService,
                  prompt_service: IPromptService,
                  embeddings_service: IEmbeddingsService,
-                 retriever_service: IRetrieverService):
+                 retriever_service: IRetrieverService,
+                 tool_service: IToolService):
         self._chat_model_service = chat_model_service
         self._mcp_service = mcp_service
         self._recognizer_service = recognizer_service
         self._prompt_service = prompt_service
         self._embeddings_service = embeddings_service
         self._retriever_service = retriever_service
+        self._tool_service = tool_service
         self._collection_name = MongoCollection.AGENT
 
     @staticmethod
@@ -292,12 +296,6 @@ class AgentServiceImpl(IAgentService):
             raise NotFoundError(reason="Some entities are not exists.")
 
     async def _get_agent_config(self, agent: Agent):
-        dict_value: dict[str, Any] = {
-            "agent_name": agent.name,
-            "description": agent.description,
-            "language": agent.language,
-        }
-
         task_dict: dict[str, asyncio.Task | None] = {
             "image_recognizer": None,
             "retrievers": None,
@@ -325,8 +323,17 @@ class AgentServiceImpl(IAgentService):
                     return [task.result() for task in tasks]
 
                 task_dict["retrievers"] = tg.create_task(get_retrievers())
-            # if agent.tool_ids and len(agent.tool_ids) > 0:
-            #     task_dict["tools"] = ""
+            if agent.tool_ids and len(agent.tool_ids) > 0:
+                async def get_tool_configuration():
+                    tasks: list[asyncio.Task] = []
+                    async with asyncio.TaskGroup() as group:
+                        for tool_id in agent.tool_ids:
+                            task = group.create_task(self._tool_service.get_configuration_by_id(tool_id))
+                            tasks.append(task)
+                    tools: list[ToolConfiguration] = [t.result() for t in tasks]
+                    return tools
+
+                task_dict["tools"] = tg.create_task(get_tool_configuration())
             if agent.mcp_server_ids:
                 async def get_mcp_configuration():
                     tasks: list[tuple[asyncio.Task, asyncio.Task]] = []
@@ -346,6 +353,11 @@ class AgentServiceImpl(IAgentService):
             task_dict["llm"] = tg.create_task(self._chat_model_service.get_configuration_by_id(agent.llm_id))
             task_dict["prompt"] = tg.create_task(self._prompt_service.get_configuration_by_id(agent.prompt_id))
 
+        dict_value: dict[str, Any] = {
+            "agent_name": agent.name,
+            "description": agent.description,
+            "language": agent.language,
+        }
         for k, v in task_dict.items():
             if v is not None:
                 dict_value[k] = v.result()
