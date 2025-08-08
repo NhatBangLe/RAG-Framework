@@ -208,7 +208,7 @@ class EmbeddingsServiceImpl(IEmbeddingsService):
         collection = get_collection(MongoCollection.RETRIEVER)
         retriever_using_doc = await collection.find_one({"embeddings_id": model_id})
         if retriever_using_doc is not None:
-            raise NotAcceptableError(f"Cannot delete chat model with id {model_id}. "
+            raise NotAcceptableError(f"Cannot delete embedding model with id {model_id}. "
                                      f"Retriever with id {retriever_using_doc["_id"]} is still using it.")
 
         await delete_by_id(valid_id, self._collection_name)

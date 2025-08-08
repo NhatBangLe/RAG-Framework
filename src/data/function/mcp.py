@@ -177,7 +177,7 @@ class MCPServiceImpl(IMCPService):
         collection = get_collection(MongoCollection.AGENT)
         agent_using_doc = await collection.find_one({"mcp_server_ids": model_id})
         if agent_using_doc is not None:
-            raise NotAcceptableError(f"Cannot delete chat model with id {model_id}. "
+            raise NotAcceptableError(f"Cannot delete MCP configuration with id {model_id}. "
                                      f"Agent with id {agent_using_doc["_id"]} is still using it.")
 
         await delete_by_id(valid_id, self._collection_name)
